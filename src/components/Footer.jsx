@@ -32,7 +32,7 @@ const Footer = () => (
           <h4 className="font-bold text-sm mb-4">Contact Us</h4>
           <ul className="space-y-3 text-sm text-gray-500">
             <li className="flex items-start gap-2"><MapPin className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" /><span>Dehradun, Uttarakhand, India</span></li>
-            <li className="flex items-center gap-2"><Phone className="w-4 h-4 text-blue-600 shrink-0" /><a href="tel:+919058080048" className="hover:text-blue-600">+91 90580 80048</a></li>
+
             <li className="flex items-center gap-2"><Mail className="w-4 h-4 text-blue-600 shrink-0" /><a href="mailto:support@zenrixi.com" className="hover:text-blue-600">support@zenrixi.com</a></li>
           </ul>
         </div>
