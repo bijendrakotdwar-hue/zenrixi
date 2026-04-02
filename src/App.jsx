@@ -8,6 +8,7 @@ import SignupPage from './pages/SignupPage'
 import CompanySignupPage from './pages/CompanySignupPage'
 import CompanyPortalPage from './pages/CompanyPortalPage'
 import CandidatePortalPage from './pages/CandidatePortalPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
         <Route path="/company-signup" element={<CompanySignupPage />} />
         <Route path="/company-portal" element={<CompanyPortalPage />} />
         <Route path="/candidate-portal" element={<CandidatePortalPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="*" element={
           <div className="min-h-screen flex items-center justify-center text-center px-4">
             <div><h1 className="text-6xl font-bold text-blue-600 mb-4">404</h1>

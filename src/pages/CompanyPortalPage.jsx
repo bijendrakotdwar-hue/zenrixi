@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Building2, Plus, Users, Briefcase, Star, LogOut, Eye, EyeOff } from 'lucide-react'
 import { SUPABASE_URL, SUPABASE_KEY } from '../lib/supabase'
+import { sendPasswordResetEmail } from '../lib/email'
 
 const OPENAI_KEY = 'YOUR_OPENAI_KEY_HERE'
 const h = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' }
@@ -42,14 +43,17 @@ const CompanyPortalPage = () => {
     if (newPass.length < 8) { setError('Password must be at least 8 characters'); return }
     setLoading(true)
     try {
-      const check = await fetch(`${SUPABASE_URL}/rest/v1/companies?email=eq.${encodeURIComponent(forgotEmail)}&select=id`, { headers: h })
+      const check = await fetch(`${SUPABASE_URL}/rest/v1/companies?email=eq.${encodeURIComponent(forgotEmail)}&select=id,company_name`, { headers: h })
       const data = await check.json()
       if (!data.length) { setError('Email not found.'); return }
-      await fetch(`${SUPABASE_URL}/rest/v1/companies?email=eq.${encodeURIComponent(forgotEmail)}`, {
-        method: 'PATCH', headers: { ...h, 'Prefer': 'return=minimal' }, body: JSON.stringify({ password: newPass })
+      const token = crypto.randomUUID()
+      await fetch(`${SUPABASE_URL}/rest/v1/password_resets`, {
+        method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ email: forgotEmail, token, user_type: 'company' })
       })
+      await sendPasswordResetEmail(data[0].company_name || 'Company', forgotEmail, token, 'company')
       setShowForgot(false); setForgotEmail(''); setNewPass(''); setError('')
-      alert('Password updated! Please login.')
+      alert('Password reset link sent to your email!')
     } catch { setError('Failed to reset password.') }
     finally { setLoading(false) }
   }

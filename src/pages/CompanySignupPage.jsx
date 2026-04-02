@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, CheckCircle2, Building2 } from 'lucide-react'
 import Header from '../components/Header'
 import { SUPABASE_URL, SUPABASE_KEY } from '../lib/supabase'
+import { sendCompanyWelcomeEmail } from '../lib/email'
 
 const h = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' }
 
@@ -33,6 +34,7 @@ const CompanySignupPage = () => {
         body: JSON.stringify({ company_name: form.company_name, email: form.email, password: form.password, credits_balance: 0 })
       })
       if (!res.ok) throw new Error('Registration failed')
+      await sendCompanyWelcomeEmail(form.company_name, form.email)
       navigate('/company-portal')
     } catch(e) { setError(e.message) }
     finally { setLoading(false) }

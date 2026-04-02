@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { User, Briefcase, Star, LogOut, Eye, EyeOff, Search } from 'lucide-react'
 import Header from '../components/Header'
 import { SUPABASE_URL, SUPABASE_KEY, supabase } from '../lib/supabase'
+import { sendPasswordResetEmail } from '../lib/email'
 
 const h = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' }
 
@@ -51,14 +52,17 @@ const CandidatePortalPage = () => {
     if (newPass.length < 8) { setError('Password must be at least 8 characters'); return }
     setLoading(true)
     try {
-      const check = await fetch(`${SUPABASE_URL}/rest/v1/candidates?email=eq.${encodeURIComponent(forgotEmail)}&select=id`, { headers: h })
+      const check = await fetch(`${SUPABASE_URL}/rest/v1/candidates?email=eq.${encodeURIComponent(forgotEmail)}&select=id,name`, { headers: h })
       const data = await check.json()
       if (!data.length) { setError('Email not found.'); return }
-      await fetch(`${SUPABASE_URL}/rest/v1/candidates?email=eq.${encodeURIComponent(forgotEmail)}`, {
-        method: 'PATCH', headers: { ...h, 'Prefer': 'return=minimal' }, body: JSON.stringify({ password: newPass })
+      const token = crypto.randomUUID()
+      await fetch(`${SUPABASE_URL}/rest/v1/password_resets`, {
+        method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ email: forgotEmail, token, user_type: 'candidate' })
       })
+      await sendPasswordResetEmail(data[0].name || 'User', forgotEmail, token, 'candidate')
       setShowForgot(false); setForgotEmail(''); setNewPass(''); setError('')
-      alert('Password updated! Please login.')
+      alert('Password reset link sent to your email!')
     } catch { setError('Failed to reset password.') }
     finally { setLoading(false) }
   }

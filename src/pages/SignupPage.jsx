@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Upload, FileText, X, CheckCircle2 } from 'lucide-react'
 import Header from '../components/Header'
 import { SUPABASE_URL, SUPABASE_KEY, supabase } from '../lib/supabase'
+import { sendWelcomeEmail } from '../lib/email'
 
 const h = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' }
 
@@ -47,6 +48,7 @@ const SignupPage = () => {
         body: JSON.stringify({ name: form.name, email: form.email, phone: '+91'+form.phone, password: form.password })
       })
       if (!res.ok) throw new Error('Registration failed')
+      await sendWelcomeEmail(form.name, form.email)
       navigate('/candidate-portal')
     } catch(e) { setError(e.message) }
     finally { setLoading(false) }
