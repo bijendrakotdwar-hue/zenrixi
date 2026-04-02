@@ -23,13 +23,7 @@ const CandidatePortalPage = () => {
   const [newPass, setNewPass] = useState('')
 
 
-  const handleGoogleLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin + '/candidate-portal' }
-    })
-    if (error) alert('Google login failed: ' + error.message)
-  }
+
 
   const handleGoogleLogin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
