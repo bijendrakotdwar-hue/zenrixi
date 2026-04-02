@@ -67,7 +67,7 @@ const Header = () => {
       </nav>
       {isOpen && (
         <div className="md:hidden bg-white border-t px-4 py-4 flex flex-col gap-2">
-          {[['Jobs','/jobs'],['Companies','/companies']].map(([name,path]) => (
+          {[['Home','/'],['Jobs','/jobs'],['Companies','/companies']].map(([name,path]) => (
             <Link key={path} to={path} onClick={() => setIsOpen(false)} className="py-2 text-sm font-medium text-gray-700">{name}</Link>
           ))}
           <hr className="my-2" />
