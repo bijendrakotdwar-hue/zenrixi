@@ -49,6 +49,7 @@ const SignupPage = () => {
       })
       if (!res.ok) throw new Error('Registration failed')
       await sendWelcomeEmail(form.name, form.email)
+      alert('Registration successful! Welcome email sent. Please login.')
       navigate('/candidate-portal')
     } catch(e) { setError(e.message) }
     finally { setLoading(false) }
