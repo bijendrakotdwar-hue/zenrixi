@@ -1,4 +1,4 @@
-const RESEND_API_KEY = 're_c8cscWr9_D3GR15tAme3y8vcAYGDa3eDi'
+const RESEND_API_KEY = import.meta.env.VITE_RESEND_KEY
 
 export const sendEmail = async ({ to, subject, html }) => {
   try {
