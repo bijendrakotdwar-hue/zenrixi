@@ -21,7 +21,7 @@ const Header = () => {
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between">
         <Link to="/" className="text-2xl font-extrabold text-blue-600">zenrixi</Link>
         <div className="hidden md:flex items-center gap-6">
-          {[['Jobs','/jobs'],['Companies','/companies'],['Services','/services']].map(([name,path]) => (
+          {[['Home','/'],['Jobs','/jobs'],['Companies','/companies']].map(([name,path]) => (
             <Link key={path} to={path} className={`text-sm font-medium transition-colors ${location.pathname===path?'text-blue-600':'text-gray-600 hover:text-gray-900'}`}>{name}</Link>
           ))}
           <div className="relative">
