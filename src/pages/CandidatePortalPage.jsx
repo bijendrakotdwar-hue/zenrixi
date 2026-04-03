@@ -48,23 +48,28 @@ const CandidatePortalPage = () => {
 
   const handleForgot = async () => {
     if (!forgotEmail) { setError('Please enter your email'); return }
-    setLoading(true)
+    setLoading(true); setError('')
     try {
       const check = await fetch(`${SUPABASE_URL}/rest/v1/candidates?email=eq.${encodeURIComponent(forgotEmail)}&select=id,name`, { headers: h })
       const data = await check.json()
-      if (!data.length) { setError('Email not found.'); return }
+      if (!data.length) { setError('Email not found. Please register first.'); setLoading(false); return }
       const token = crypto.randomUUID()
       await fetch(`${SUPABASE_URL}/rest/v1/password_resets`, {
-        method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' },
+        method: 'POST',
+        headers: { ...h, 'Prefer': 'return=minimal' },
         body: JSON.stringify({ email: forgotEmail, token, user_type: 'candidate' })
       })
       await sendPasswordResetEmail(data[0].name || 'User', forgotEmail, token, 'candidate')
-      setShowForgot(false); setForgotEmail(''); setNewPass(''); setError('')
-      alert('Password reset link sent to your email!')
-    } catch { setError('Failed to reset password.') }
+      setShowForgot(false)
+      setForgotEmail('')
+      setError('')
+      alert('Password reset link sent to your email! Please check your inbox.')
+    } catch(e) {
+      console.error(e)
+      setError('Failed to send reset email. Please try again.')
+    }
     finally { setLoading(false) }
   }
-
   const loadJobs = async kw => {
     try {
       let url = `${SUPABASE_URL}/rest/v1/jobs?select=*,companies(company_name)&status=eq.active&order=created_at.desc`
