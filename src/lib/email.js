@@ -1,19 +1,9 @@
-const RESEND_API_KEY = 're_a1UiGJFQ_KNphT1QF2Dqun2HpJrwLdBQD'
-
 export const sendEmail = async ({ to, subject, html }) => {
   try {
-    const res = await fetch('https://api.resend.com/emails', {
+    const res = await fetch('/api/send-email', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: 'Zenrixi <support@zenrixi.com>',
-        to,
-        subject,
-        html
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to, subject, html })
     })
     return await res.json()
   } catch(e) {
