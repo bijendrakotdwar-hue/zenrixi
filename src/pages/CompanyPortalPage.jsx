@@ -21,7 +21,6 @@ const CompanyPortalPage = () => {
   const [candidates, setCandidates] = useState([])
   const [showForgot, setShowForgot] = useState(false)
   const [forgotEmail, setForgotEmail] = useState('')
-  const [newPass, setNewPass] = useState('')
   const [job, setJob] = useState({ title:'', description:'', skills:'', experience:'0', location:'', salary:'' })
 
   const handleLogin = async () => {
@@ -39,8 +38,7 @@ const CompanyPortalPage = () => {
   }
 
   const handleForgot = async () => {
-    if (!forgotEmail||!newPass) { setError('Please enter email and new password'); return }
-    if (newPass.length < 8) { setError('Password must be at least 8 characters'); return }
+    if (!forgotEmail) { setError('Please enter your email'); return }
     setLoading(true)
     try {
       const check = await fetch(`${SUPABASE_URL}/rest/v1/companies?email=eq.${encodeURIComponent(forgotEmail)}&select=id,company_name`, { headers: h })
@@ -171,8 +169,7 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
                 <div className="space-y-4">
                   <input type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} placeholder="Registered email"
                     className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  <input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="New password (min 8 chars)"
-                    className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+
                   <button onClick={handleForgot} disabled={loading}
                     className="w-full h-11 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold rounded-xl text-sm">
                     {loading ? 'Updating...' : 'Reset Password'}
