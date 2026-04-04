@@ -112,9 +112,24 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
       const newJob = await res.json()
       setJob({ title:'', description:'', skills:'', experience:'0', location:'', salary:'' })
       await runAIMatching(newJob[0], newJob[0].id, candidates)
+      
+      // LinkedIn auto post
+      try {
+        await fetch('/api/linkedin-post', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: job.title,
+            skills: job.skills,
+            experience: job.experience,
+            companyName: company.company_name
+          })
+        })
+      } catch(e) { console.error('LinkedIn post error:', e) }
+      
       await loadData(company.id)
       setTab('candidates')
-      alert('Job posted! AI matching complete. Check Candidates tab.')
+      alert('Job posted! AI matching complete and LinkedIn post done!')
     } catch(e) { setError('Failed: ' + e.message) }
     finally { setLoading(false) }
   }
