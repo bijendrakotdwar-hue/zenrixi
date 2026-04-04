@@ -122,7 +122,9 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
             title: job.title,
             skills: job.skills,
             experience: job.experience,
-            companyName: company.company_name
+            companyName: company.company_name,
+            location: job.location,
+            salary: job.salary
           })
         })
       } catch(e) { console.error('LinkedIn post error:', e) }
