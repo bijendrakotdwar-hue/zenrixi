@@ -33,7 +33,6 @@ const CompanyPortalPage = () => {
   const [forgotEmail, setForgotEmail] = useState('')
   const [job, setJob] = useState({ title:'', description:'', skills:'', experience:'0', location:'', salary:'' })
   const [selectedCandidate, setSelectedCandidate] = useState(null)
-  const [selectedCandidate, setSelectedCandidate] = useState(null)
 
   const handleLogin = async () => {
     if (!email||!password) { setError('Please enter email and password'); return }
