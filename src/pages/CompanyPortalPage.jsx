@@ -23,6 +23,7 @@ const CompanyPortalPage = () => {
   const [forgotEmail, setForgotEmail] = useState('')
   const [job, setJob] = useState({ title:'', description:'', skills:'', experience:'0', location:'', salary:'' })
   const [selectedCandidate, setSelectedCandidate] = useState(null)
+  const [selectedCandidate, setSelectedCandidate] = useState(null)
 
   const handleLogin = async () => {
     if (!email||!password) { setError('Please enter email and password'); return }
@@ -137,9 +138,92 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
     finally { setLoading(false) }
   }
 
+
+  const CandidateModal = ({ match, onClose }) => {
+    if (!match) return null
+    return (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+        <div className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="flex items-start justify-between mb-5">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-2xl font-bold text-blue-600">
+                {match.candidates?.name?.charAt(0)?.toUpperCase() || 'C'}
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">{match.candidates?.name}</h2>
+                <p className="text-sm text-gray-500">{match.candidates?.job_title || 'Professional'}</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+          </div>
+
+          <div className="space-y-3 mb-5">
+            <div className="flex justify-between py-2 border-b text-sm">
+              <span className="text-gray-500">Email</span>
+              <a href={`mailto:${match.candidates?.email}`} className="text-blue-600 hover:underline">{match.candidates?.email}</a>
+            </div>
+            <div className="flex justify-between py-2 border-b text-sm">
+              <span className="text-gray-500">Phone</span>
+              <a href={`tel:${match.candidates?.phone}`} className="text-blue-600 hover:underline">{match.candidates?.phone || '—'}</a>
+            </div>
+            <div className="flex justify-between py-2 border-b text-sm">
+              <span className="text-gray-500">Experience</span>
+              <span className="font-medium">{match.candidates?.experience_years ? `${match.candidates.experience_years} years` : '—'}</span>
+            </div>
+            <div className="flex justify-between py-2 border-b text-sm">
+              <span className="text-gray-500">AI Score</span>
+              <span className="font-bold text-blue-600">{match.ai_score}%</span>
+            </div>
+            <div className="flex justify-between py-2 border-b text-sm">
+              <span className="text-gray-500">Status</span>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${match.status==='shortlist'?'bg-green-100 text-green-700':match.status==='reject'?'bg-red-100 text-red-700':'bg-amber-100 text-amber-700'}`}>
+                {match.status==='shortlist'?'Shortlisted':match.status==='reject'?'Rejected':'Maybe'}
+              </span>
+            </div>
+            {match.candidates?.parsed_skills?.length > 0 && (
+              <div className="py-2 border-b text-sm">
+                <span className="text-gray-500 block mb-2">Skills</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {match.candidates.parsed_skills.map((s,i) => (
+                    <span key={i} className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">{s}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {match.match_reason && (
+              <div className="py-2 text-sm">
+                <span className="text-gray-500 block mb-1">AI Analysis</span>
+                <p className="text-gray-700 bg-gray-50 rounded-lg p-2 text-xs">{match.match_reason}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-3">
+            <a href={`mailto:${match.candidates?.email}`}
+              className="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors">
+              Send Email
+            </a>
+            {match.candidates?.phone && (
+              <a href={`tel:${match.candidates?.phone}`}
+                className="flex-1 text-center bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors">
+                Call Now
+              </a>
+            )}
+            {match.candidates?.resume_url && (
+              <a href={match.candidates.resume_url} target="_blank" rel="noreferrer"
+                className="flex-1 text-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors">
+                View Resume
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col">
+      {selectedCandidate && <CandidateModal match={selectedCandidate} onClose={() => setSelectedCandidate(null)} />}
         <header className="bg-white border-b py-4 px-6 flex items-center justify-between">
           <Link to="/" className="text-xl font-extrabold text-blue-600">zenrixi</Link>
           <Link to="/company-signup" className="text-sm text-blue-600 font-bold hover:underline">Register Company</Link>
@@ -336,7 +420,7 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
               ) : (
                 <div className="space-y-3">
                   {matches.filter(m => m.ai_score >= 20).sort((a,b) => b.ai_score - a.ai_score).map(match => (
-                    <div key={match.id} className="bg-white rounded-2xl border p-5">
+                    <div key={match.id} className="bg-white rounded-2xl border p-5 cursor-pointer hover:shadow-md transition-all" onClick={() => setSelectedCandidate(match)}>
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center font-bold text-blue-600 text-lg cursor-pointer hover:bg-blue-100"
