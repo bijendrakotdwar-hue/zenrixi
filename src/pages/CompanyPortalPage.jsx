@@ -124,6 +124,21 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
       if (!res.ok) throw new Error('Job post failed')
       const newJob = await res.json()
       setJob({ title:'', description:'', skills:'', experience:'0', location:'', salary:'' })
+
+    // LinkedIn auto post
+    try {
+      await fetch('https://bijendra85.app.n8n.cloud/webhook/d5708100-f631-442c-8215-2a723f14cbeb', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: job.title,
+          company_name: company.company_name,
+          location: job.location || 'India',
+          skills: job.skills,
+          experience: job.experience
+        })
+      })
+    } catch(e) { console.log('LinkedIn post failed:', e) }
       await runAIMatching(newJob[0], newJob[0].id, candidates)
       
       // LinkedIn auto post
