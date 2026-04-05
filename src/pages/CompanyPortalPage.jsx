@@ -22,6 +22,7 @@ const CompanyPortalPage = () => {
   const [showForgot, setShowForgot] = useState(false)
   const [forgotEmail, setForgotEmail] = useState('')
   const [job, setJob] = useState({ title:'', description:'', skills:'', experience:'0', location:'', salary:'' })
+  const [selectedCandidate, setSelectedCandidate] = useState(null)
 
   const handleLogin = async () => {
     if (!email||!password) { setError('Please enter email and password'); return }
@@ -327,40 +328,104 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
             <div>
               <h2 className="text-xl font-bold mb-2">AI Matched Candidates</h2>
               <p className="text-sm text-gray-500 mb-5">Candidates automatically shortlisted by AI for your jobs</p>
-              {matches.length===0 ? (
+              {matches.filter(m => m.ai_score >= 20).length===0 ? (
                 <div className="bg-white rounded-2xl border p-12 text-center">
-                  <p className="text-sm text-gray-500">No matches yet. Post a job and AI will match candidates!</p>
+                  <p className="text-sm text-gray-500">No candidates with 20%+ match yet. Post a job and AI will match candidates!</p>
                   <button onClick={() => setTab('post-job')} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold">Post a Job</button>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {matches.map(match => (
+                  {matches.filter(m => m.ai_score >= 20).sort((a,b) => b.ai_score - a.ai_score).map(match => (
                     <div key={match.id} className="bg-white rounded-2xl border p-5">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center font-bold text-blue-600">
+                          <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center font-bold text-blue-600 text-lg cursor-pointer hover:bg-blue-100"
+                            onClick={() => setSelectedCandidate(match.candidates)}>
                             {match.candidates?.name?.charAt(0)?.toUpperCase()||'C'}
                           </div>
                           <div>
-                            <h3 className="font-bold text-sm">{match.candidates?.name}</h3>
-                            <p className="text-xs text-gray-500">{match.candidates?.job_title||'Professional'} • {match.candidates?.experience_years||0} yrs</p>
+                            <h3 className="font-bold text-sm cursor-pointer hover:text-blue-600"
+                              onClick={() => setSelectedCandidate(match.candidates)}>
+                              {match.candidates?.name}
+                            </h3>
+                            <p className="text-xs text-gray-500">{match.candidates?.job_title||'Professional'} • {match.candidates?.experience_years||0} yrs exp</p>
                             <p className="text-xs text-blue-600 mt-0.5">For: {match.jobs?.title}</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-xl font-bold text-blue-600">{match.ai_score}%</div>
+                          <div className="text-2xl font-bold text-blue-600">{match.ai_score}%</div>
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${match.status==='shortlist'?'bg-green-100 text-green-700':match.status==='reject'?'bg-red-100 text-red-700':'bg-amber-100 text-amber-700'}`}>
                             {match.status==='shortlist'?'Shortlisted':match.status==='reject'?'Rejected':'Maybe'}
                           </span>
                         </div>
                       </div>
                       {match.match_reason&&<p className="text-xs text-gray-500 mt-2 bg-gray-50 rounded-lg p-2">{match.match_reason}</p>}
-                      <div className="flex gap-2 mt-3">
-                        <a href={`mailto:${match.candidates?.email}`} className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-blue-700">Email</a>
+                      <div className="flex gap-2 mt-3 flex-wrap">
+                        <button onClick={() => setSelectedCandidate(match.candidates)}
+                          className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-blue-700">View Profile</button>
+                        <a href={`mailto:${match.candidates?.email}`} className="text-xs bg-gray-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-gray-700">Email</a>
                         {match.candidates?.phone&&<a href={`tel:${match.candidates?.phone}`} className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-green-700">Call</a>}
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+              
+              {selectedCandidate && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedCandidate(null)}>
+                  <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-between mb-5">
+                      <h2 className="text-lg font-bold">Candidate Profile</h2>
+                      <button onClick={() => setSelectedCandidate(null)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
+                    </div>
+                    <div className="flex items-center gap-4 mb-5">
+                      <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center text-2xl font-bold text-blue-600">
+                        {selectedCandidate?.name?.charAt(0)?.toUpperCase()}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-lg">{selectedCandidate?.name}</h3>
+                        <p className="text-sm text-gray-500">{selectedCandidate?.job_title || 'Professional'}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-3 text-sm mb-5">
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-gray-500">Email</span>
+                        <a href={`mailto:${selectedCandidate?.email}`} className="text-blue-600 hover:underline">{selectedCandidate?.email}</a>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-gray-500">Phone</span>
+                        <a href={`tel:${selectedCandidate?.phone}`} className="text-blue-600 hover:underline">{selectedCandidate?.phone || '—'}</a>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-gray-500">Experience</span>
+                        <span className="font-medium">{selectedCandidate?.experience_years ? `${selectedCandidate.experience_years} years` : '—'}</span>
+                      </div>
+                      <div className="py-2">
+                        <span className="text-gray-500 block mb-2">Skills</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {Array.isArray(selectedCandidate?.parsed_skills) && selectedCandidate.parsed_skills.length > 0
+                            ? selectedCandidate.parsed_skills.map((s,i) => <span key={i} className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">{s}</span>)
+                            : <span className="text-gray-400 text-xs">No skills listed</span>}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      {selectedCandidate?.resume_url ? (
+                        <a href={selectedCandidate.resume_url} target="_blank" rel="noreferrer" download
+                          className="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-sm">
+                          Download Resume
+                        </a>
+                      ) : (
+                        <div className="flex-1 text-center bg-gray-100 text-gray-400 font-bold py-2.5 rounded-xl text-sm">
+                          No Resume Uploaded
+                        </div>
+                      )}
+                      <a href={`mailto:${selectedCandidate?.email}`}
+                        className="flex-1 text-center border border-blue-600 text-blue-600 hover:bg-blue-50 font-bold py-2.5 rounded-xl text-sm">
+                        Send Email
+                      </a>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
