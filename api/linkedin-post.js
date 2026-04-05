@@ -18,7 +18,7 @@ export default async function handler(req, res) {
         'X-Restli-Protocol-Version': '2.0.0'
       },
       body: JSON.stringify({
-        author: `urn:li:organization:${orgId}`,
+        author: `urn:li:person:Rk19HuTj5c`,
         lifecycleState: 'PUBLISHED',
         specificContent: {
           'com.linkedin.ugc.ShareContent': {
