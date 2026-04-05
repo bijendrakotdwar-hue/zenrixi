@@ -20,6 +20,16 @@ const CompanyPortalPage = () => {
   const [matches, setMatches] = useState([])
   const [candidates, setCandidates] = useState([])
   const [showForgot, setShowForgot] = useState(false)
+
+  React.useEffect(() => {
+    const saved = localStorage.getItem('company_session')
+    if (saved) {
+      const data = JSON.parse(saved)
+      setCompany(data)
+      setIsLoggedIn(true)
+      loadData(data.id)
+    }
+  }, [])
   const [forgotEmail, setForgotEmail] = useState('')
   const [job, setJob] = useState({ title:'', description:'', skills:'', experience:'0', location:'', salary:'' })
   const [selectedCandidate, setSelectedCandidate] = useState(null)
@@ -34,6 +44,7 @@ const CompanyPortalPage = () => {
       if (!data.length) { setError('Company not found. Please register first.'); return }
       if (data[0].password !== password) { setError('Incorrect password.'); return }
       setCompany(data[0]); setIsLoggedIn(true)
+      localStorage.setItem('company_session', JSON.stringify(data[0]))
       await loadData(data[0].id)
     } catch { setError('Login failed. Try again.') }
     finally { setLoading(false) }
@@ -295,7 +306,7 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
         <Link to="/" className="text-lg font-extrabold text-blue-600">zenrixi</Link>
         <div className="flex items-center gap-3">
           <span className="text-sm font-bold hidden sm:block">{company?.company_name}</span>
-          <button onClick={() => { setIsLoggedIn(false); setCompany(null); setJobs([]); setMatches([]) }} className="p-2 text-gray-500 hover:text-red-500">
+          <button onClick={() => { setIsLoggedIn(false); setCompany(null); setJobs([]); setMatches([]); localStorage.removeItem('company_session') }} className="p-2 text-gray-500 hover:text-red-500">
             <LogOut className="w-4 h-4" />
           </button>
         </div>

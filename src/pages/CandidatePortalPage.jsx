@@ -20,6 +20,17 @@ const CandidatePortalPage = () => {
   const [matches, setMatches] = useState([])
   const [keyword, setKeyword] = useState('')
   const [showForgot, setShowForgot] = useState(false)
+
+  React.useEffect(() => {
+    const saved = localStorage.getItem('candidate_session')
+    if (saved) {
+      const data = JSON.parse(saved)
+      setCandidate(data)
+      setIsLoggedIn(true)
+      loadJobs('')
+      loadMatches(data.id)
+    }
+  }, [])
   const [forgotEmail, setForgotEmail] = useState('')
 
 
@@ -41,6 +52,7 @@ const CandidatePortalPage = () => {
       if (!data.length) { setError('Account not found. Please register first.'); return }
       if (data[0].password !== password) { setError('Incorrect password.'); return }
       setCandidate(data[0]); setIsLoggedIn(true)
+      localStorage.setItem('candidate_session', JSON.stringify(data[0]))
       await loadJobs(''); await loadMatches(data[0].id)
     } catch { setError('Login failed. Try again.') }
     finally { setLoading(false) }
@@ -222,7 +234,7 @@ const CandidatePortalPage = () => {
         <Link to="/" className="text-xl font-extrabold text-blue-600">zenrixi</Link>
         <div className="flex items-center gap-3">
           <span className="text-sm font-bold hidden sm:block">{candidate?.name}</span>
-          <button onClick={() => { setIsLoggedIn(false); setCandidate(null) }} className="p-2 text-gray-500 hover:text-red-500"><LogOut className="w-4 h-4" /></button>
+          <button onClick={() => { setIsLoggedIn(false); setCandidate(null); localStorage.removeItem('candidate_session') }} className="p-2 text-gray-500 hover:text-red-500"><LogOut className="w-4 h-4" /></button>
         </div>
       </header>
       <div className="flex flex-1 max-w-6xl mx-auto w-full">
