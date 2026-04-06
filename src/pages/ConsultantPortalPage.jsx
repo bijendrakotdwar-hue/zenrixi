@@ -207,7 +207,7 @@ const ConsultantPortalPage = () => {
 
       for (const candidate of allCandidates.slice(0, 50)) { // max 50 candidates
         try {
-          const prompt = \`You are an expert HR consultant. Score this candidate for the vacancy.
+          const prompt = `You are an expert HR consultant. Score this candidate for the vacancy.
 Return ONLY valid JSON: {"score": 85, "reason": "Strong match because..."}
 Score 0-100 based on skills, experience, and job fit.
 
@@ -220,19 +220,19 @@ CANDIDATE: \${candidate.name}
 Current Role: \${candidate.job_title || 'N/A'}
 Experience: \${candidate.experience_years || 0} years
 Skills: \${Array.isArray(candidate.parsed_skills) ? candidate.parsed_skills.join(', ') : 'N/A'}
-Location: \${candidate.location || 'N/A'}\`
+Location: \${candidate.location || 'N/A'}`
 
           const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': \`Bearer \${OPENAI_KEY}\` },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer \${OPENAI_KEY}` },
             body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: prompt }], max_tokens: 150 })
           })
           const aiData = await aiRes.json()
           const text = aiData.choices?.[0]?.message?.content || '{}'
-          const result = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g, '').trim())
+          const result = JSON.parse(text.replace(/```json|```/g, '').trim())
 
           if ((result.score || 0) >= 40) { // Only save 40%+ matches
-            await fetch(\`\${SUPABASE_URL}/rest/v1/vacancy_matches\`, {
+            await fetch(`\${SUPABASE_URL}/rest/v1/vacancy_matches`, {
               method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' },
               body: JSON.stringify({
                 consultant_id: consultant.id,
@@ -249,7 +249,7 @@ Location: \${candidate.location || 'N/A'}\`
       }
 
       setMatchingVacancyId(null)
-      alert(\`AI Matching Complete! \${matched} candidates matched for "\${vacancy.title}"\`)
+      alert(`AI Matching Complete! \${matched} candidates matched for "\${vacancy.title}"`)
       await loadData(consultant.id)
     } catch(e) {
       setMatchingVacancyId(null)
@@ -259,7 +259,7 @@ Location: \${candidate.location || 'N/A'}\`
 
   const viewVacancyMatches = async (vacancyId) => {
     try {
-      const res = await fetch(\`\${SUPABASE_URL}/rest/v1/vacancy_matches?vacancy_id=eq.\${vacancyId}&select=*,candidates(name,email,phone,job_title,experience_years,parsed_skills,resume_url)&order=ai_score.desc\`, { headers: h })
+      const res = await fetch(`\${SUPABASE_URL}/rest/v1/vacancy_matches?vacancy_id=eq.\${vacancyId}&select=*,candidates(name,email,phone,job_title,experience_years,parsed_skills,resume_url)&order=ai_score.desc`, { headers: h })
       const data = await res.json()
       setSelectedVacancyMatches(Array.isArray(data) ? data : [])
       setShowMatchesModal(true)
@@ -267,7 +267,7 @@ Location: \${candidate.location || 'N/A'}\`
   }
 
   const updateMatchStatus = async (matchId, status) => {
-    await fetch(\`\${SUPABASE_URL}/rest/v1/vacancy_matches?id=eq.\${matchId}\`, {
+    await fetch(`\${SUPABASE_URL}/rest/v1/vacancy_matches?id=eq.\${matchId}`, {
       method: 'PATCH', headers: { ...h, 'Prefer': 'return=minimal' },
       body: JSON.stringify({ status })
     })
