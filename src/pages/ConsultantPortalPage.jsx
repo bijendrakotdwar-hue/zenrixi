@@ -10,6 +10,8 @@ const ConsultantPortalPage = () => {
   const [consultant, setConsultant] = useState(null)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isRegister, setIsRegister] = useState(false)
+  const [showForgotConsultant, setShowForgotConsultant] = useState(false)
+  const [forgotConsultantEmail, setForgotConsultantEmail] = useState('')
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -523,7 +525,27 @@ Location: \${candidate.location || 'N/A'}`
             <div className="text-3xl font-black text-blue-700">zenrixi</div>
             <div className="text-sm text-gray-500 mt-1">Consultant Portal</div>
           </div>
-          {!isRegister ? (
+          {showForgotConsultant ? (
+          <>
+            <h2 className="text-xl font-bold mb-5 text-center">Reset Password</h2>
+            <p className="text-sm text-gray-500 mb-4 text-center">Enter your registered email</p>
+            {error && <p className="text-red-600 text-sm mb-4 bg-red-50 p-3 rounded-xl">{error}</p>}
+            <div className="space-y-3">
+              <input type="email" placeholder="Registered email" value={forgotConsultantEmail}
+                onChange={e => setForgotConsultantEmail(e.target.value)}
+                className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <button onClick={async () => {
+                if (!forgotConsultantEmail) { setError('Email required'); return }
+                const res = await fetch(`${SUPABASE_URL}/rest/v1/consultants?email=eq.${encodeURIComponent(forgotConsultantEmail)}&select=id,name`, { headers: h })
+                const data = await res.json()
+                if (!data.length) { setError('Email not found'); return }
+                alert('Please contact admin to reset your password or re-register with a new account.')
+                setShowForgotConsultant(false)
+              }} className="w-full h-11 bg-blue-700 text-white font-bold rounded-xl">Check Email</button>
+              <button onClick={() => { setShowForgotConsultant(false); setError('') }} className="w-full text-xs text-gray-500 hover:text-blue-600 text-center">← Back to Login</button>
+            </div>
+          </>
+        ) : !isRegister ? (
             <>
               <h2 className="text-xl font-bold mb-5 text-center">Login to your account</h2>
               {error && <p className="text-red-600 text-sm mb-4 bg-red-50 p-3 rounded-xl">{error}</p>}
@@ -538,6 +560,7 @@ Location: \${candidate.location || 'N/A'}`
                     {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                <button onClick={() => setShowForgotConsultant(true)} className="text-xs text-blue-600 hover:underline text-right w-full">Forgot password?</button>
                 <button onClick={handleLogin} disabled={loading}
                   className="w-full h-11 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl disabled:opacity-60">
                   {loading ? 'Logging in...' : 'Login →'}
