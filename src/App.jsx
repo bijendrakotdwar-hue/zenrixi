@@ -6,6 +6,7 @@ import JobsPage from './pages/JobsPage'
 import CompaniesPage from './pages/CompaniesPage'
 import SignupPage from './pages/SignupPage'
 import CompanySignupPage from './pages/CompanySignupPage'
+import AIAgents from './components/AIAgents'
 import AppLandingPage from './pages/AppLandingPage'
 import ConsultantPortalPage from './pages/ConsultantPortalPage'
 import CompanyPortalPage from './pages/CompanyPortalPage'
@@ -24,6 +25,8 @@ function App() {
         <Route path="/company-portal" element={<CompanyPortalPage />} />
         <Route path="/candidate-portal" element={<CandidatePortalPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/app" element={<AppLandingPage />} />
+        <Route path="/consultant-portal" element={<ConsultantPortalPage />} />
         <Route path="*" element={
           <div className="min-h-screen flex items-center justify-center text-center px-4">
             <div><h1 className="text-6xl font-bold text-blue-600 mb-4">404</h1>
@@ -31,11 +34,11 @@ function App() {
             <a href="/" className="text-blue-600 hover:underline">Back to home</a></div>
           </div>
         } />
-        <Route path="/app" element={<AppLandingPage />} />
-        <Route path="/consultant-portal" element={<ConsultantPortalPage />} />
       </Routes>
       <Toaster richColors />
+      <AIAgents />
     </Router>
   )
 }
+
 export default App
