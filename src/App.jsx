@@ -6,6 +6,7 @@ import JobsPage from './pages/JobsPage'
 import CompaniesPage from './pages/CompaniesPage'
 import SignupPage from './pages/SignupPage'
 import CompanySignupPage from './pages/CompanySignupPage'
+import ConsultantPortalPage from './pages/ConsultantPortalPage'
 import CompanyPortalPage from './pages/CompanyPortalPage'
 import CandidatePortalPage from './pages/CandidatePortalPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
@@ -29,6 +30,7 @@ function App() {
             <a href="/" className="text-blue-600 hover:underline">Back to home</a></div>
           </div>
         } />
+        <Route path="/consultant-portal" element={<ConsultantPortalPage />} />
       </Routes>
       <Toaster richColors />
     </Router>
