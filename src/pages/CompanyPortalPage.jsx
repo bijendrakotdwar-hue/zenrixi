@@ -540,7 +540,16 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
                           <h3 className="font-bold text-lg">{j.title}</h3>
                           <p className="text-sm text-gray-500 mt-1">{j.description?.slice(0,100)}...</p>
                         </div>
-                        <span className={`text-xs px-3 py-1 rounded-full font-medium ${j.status==='active'?'bg-green-100 text-green-700':'bg-gray-100 text-gray-600'}`}>{j.status}</span>
+                        <div className="flex gap-2">
+                          <button onClick={() => toggleJobStatus(j.id, j.status)}
+                            className={`text-xs px-3 py-1 rounded-full font-medium ${j.status==='active'?'bg-green-100 text-green-700':'bg-gray-100 text-gray-600'}`}>
+                            {j.status==='active' ? '✅ Active' : '⏸ Inactive'}
+                          </button>
+                          <button onClick={() => setEditingJob({...j, required_skills: Array.isArray(j.required_skills) ? j.required_skills.join(', ') : j.required_skills})}
+                            className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full hover:bg-blue-200">✏️ Edit</button>
+                          <button onClick={() => deleteJob(j.id)}
+                            className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded-full hover:bg-red-200">🗑️ Delete</button>
+                        </div>
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {Array.isArray(j.required_skills) && j.required_skills.map((s,i) => (
