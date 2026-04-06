@@ -46,6 +46,7 @@ const Header = () => {
               <div className="absolute top-10 right-0 bg-white border rounded-xl shadow-lg w-48 py-2 z-50" onMouseLeave={() => setLoginOpen(false)}>
                 <Link to="/candidate-portal" onClick={() => setLoginOpen(false)} className="block px-4 py-2 text-sm hover:bg-gray-50">Candidate Login</Link>
                 <Link to="/company-portal" onClick={() => setLoginOpen(false)} className="block px-4 py-2 text-sm hover:bg-gray-50">Company Login</Link>
+                <Link to="/consultant-portal" onClick={() => setLoginOpen(false)} className="block px-4 py-2 text-sm hover:bg-gray-50 text-purple-600 font-medium">Consultant Login</Link>
               </div>
             )}
           </div>
@@ -57,6 +58,7 @@ const Header = () => {
               <div className="absolute top-10 right-0 bg-white border rounded-xl shadow-lg w-52 py-2 z-50" onMouseLeave={() => setRegOpen(false)}>
                 <Link to="/signup" onClick={() => setRegOpen(false)} className="block px-4 py-2 text-sm hover:bg-gray-50">Register as Candidate</Link>
                 <Link to="/company-signup" onClick={() => setRegOpen(false)} className="block px-4 py-2 text-sm hover:bg-gray-50">Register as Company</Link>
+                <Link to="/consultant-portal" onClick={() => setRegOpen(false)} className="block px-4 py-2 text-sm hover:bg-gray-50 text-purple-600 font-medium">Register as Consultant</Link>
               </div>
             )}
           </div>
