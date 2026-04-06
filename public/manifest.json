@@ -1,5 +1,5 @@
 {
-  "name": "Zenrixi — AI Job Platform",
+  "name": "Zenrixi AI Job Platform",
   "short_name": "Zenrixi",
   "description": "India's AI-Powered Job Matching Platform",
   "start_url": "/",
@@ -22,58 +22,9 @@
     }
   ],
   "shortcuts": [
-    {
-      "name": "Find Jobs",
-      "url": "/jobs",
-      "description": "Browse all jobs"
-    },
-    {
-      "name": "Candid
-
-cat > ~/zenrixi/public/manifest.json << 'EOF'
-{
-  "name": "Zenrixi — AI Job Platform",
-  "short_name": "Zenrixi",
-  "description": "India's AI-Powered Job Matching Platform",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#2563eb",
-  "orientation": "portrait",
-  "icons": [
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Find Jobs",
-      "url": "/jobs",
-      "description": "Browse all jobs"
-    },
-    {
-      "name": "Candidate Login",
-      "url": "/candidate-portal",
-      "description": "Login as candidate"
-    },
-    {
-      "name": "Company Login",
-      "url": "/company-portal",
-      "description": "Login as employer"
-    },
-    {
-      "name": "Consultant Login",
-      "url": "/consultant-portal",
-      "description": "Login as consultant"
-    }
+    {"name": "Find Jobs", "url": "/jobs"},
+    {"name": "Candidate Login", "url": "/candidate-portal"},
+    {"name": "Company Login", "url": "/company-portal"},
+    {"name": "Consultant Login", "url": "/consultant-portal"}
   ]
 }
