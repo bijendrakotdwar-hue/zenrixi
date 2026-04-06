@@ -21,6 +21,7 @@ const ConsultantPortalPage = () => {
   const [payments, setPayments] = useState([])
   const [followups, setFollowups] = useState([])
   const [interviewLetters, setInterviewLetters] = useState([])
+  const [vacancies, setVacancies] = useState([])
 
   // Forms
   const [loginForm, setLoginForm] = useState({ email: '', password: '' })
@@ -30,6 +31,8 @@ const ConsultantPortalPage = () => {
   const [invoiceForm, setInvoiceForm] = useState({ client_id: '', due_date: '', items: [{ description: '', quantity: 1, rate: '', amount: '' }], gst_percent: '18', notes: '' })
   const [paymentForm, setPaymentForm] = useState({ invoice_id: '', client_id: '', amount: '', payment_date: '', payment_mode: 'bank_transfer', reference_number: '', notes: '' })
   const [followupForm, setFollowupForm] = useState({ client_id: '', type: 'call', subject: '', notes: '', follow_up_date: '', priority: 'medium' })
+  const [vacancyForm, setVacancyForm] = useState({ client_id: '', title: '', description: '', required_skills: '', min_experience: '0', location: '', salary_range: '', vacancy_count: '1', priority: 'medium', target_date: '', notes: '' })
+  const [showVacancyForm, setShowVacancyForm] = useState(false)
   const [letterForm, setLetterForm] = useState({ client_id: '', candidate_name: '', candidate_email: '', position: '', interview_date: '', interview_type: 'in-person', interview_location: '', meeting_link: '', interviewer_name: '' })
 
   const [showClientForm, setShowClientForm] = useState(false)
@@ -58,13 +61,16 @@ const ConsultantPortalPage = () => {
         fetch(`${SUPABASE_URL}/rest/v1/payments?consultant_id=eq.${cid}&order=created_at.desc`, { headers: h }),
         fetch(`${SUPABASE_URL}/rest/v1/followups?consultant_id=eq.${cid}&order=follow_up_date.asc`, { headers: h }),
         fetch(`${SUPABASE_URL}/rest/v1/interview_letters?consultant_id=eq.${cid}&order=created_at.desc`, { headers: h }),
+        fetch(`${SUPABASE_URL}/rest/v1/consultant_vacancies?consultant_id=eq.${cid}&order=created_at.desc`, { headers: h }),
       ])
       setClients(await cl.json())
       setPlacements(await pl.json())
       setInvoices(await inv.json())
       setPayments(await pay.json())
       setFollowups(await fu.json())
+      const vac = await (await fetch(`${SUPABASE_URL}/rest/v1/consultant_vacancies?consultant_id=eq.${cid}&order=created_at.desc`, { headers: h })).json()
       setInterviewLetters(await il.json())
+      setVacancies(Array.isArray(vac) ? vac : [])
     } catch(e) { console.error(e) }
   }
 
@@ -173,6 +179,50 @@ const ConsultantPortalPage = () => {
       body: JSON.stringify({ status: 'completed' })
     })
     await loadData(consultant.id)
+  }
+
+  const addVacancy = async () => {
+    if (!vacancyForm.title || !vacancyForm.client_id) { alert('Client aur Title required hai'); return }
+    const skillsArray = vacancyForm.required_skills.split(',').map(s => s.trim()).filter(Boolean)
+    await fetch(`${SUPABASE_URL}/rest/v1/consultant_vacancies`, {
+      method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ ...vacancyForm, consultant_id: consultant.id, required_skills: skillsArray, min_experience: parseInt(vacancyForm.min_experience)||0, vacancy_count: parseInt(vacancyForm.vacancy_count)||1 })
+    })
+    setVacancyForm({ client_id: '', title: '', description: '', required_skills: '', min_experience: '0', location: '', salary_range: '', vacancy_count: '1', priority: 'medium', target_date: '', notes: '' })
+    setShowVacancyForm(false)
+    await loadData(consultant.id)
+  }
+
+  const updateVacancyStatus = async (id, status) => {
+    await fetch(`${SUPABASE_URL}/rest/v1/consultant_vacancies?id=eq.${id}`, {
+      method: 'PATCH', headers: { ...h, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ status })
+    })
+    await loadData(consultant.id)
+  }
+
+  const postVacancyToZenrixi = async (vacancy) => {
+    const client = clients.find(c => c.id === vacancy.client_id)
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/jobs`, {
+        method: 'POST', headers: { ...h, 'Prefer': 'return=representation' },
+        body: JSON.stringify({
+          title: vacancy.title,
+          description: vacancy.description || vacancy.title,
+          required_skills: vacancy.required_skills || [],
+          min_experience: vacancy.min_experience || 0,
+          status: 'active',
+          company_id: null
+        })
+      })
+      const job = await res.json()
+      await fetch(`${SUPABASE_URL}/rest/v1/consultant_vacancies?id=eq.${vacancy.id}`, {
+        method: 'PATCH', headers: { ...h, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ posted_on_zenrixi: true, zenrixi_job_id: job[0]?.id })
+      })
+      alert('Vacancy posted on Zenrixi jobs!')
+      await loadData(consultant.id)
+    } catch(e) { alert('Failed: ' + e.message) }
   }
 
   const generateInterviewLetter = async () => {
@@ -363,6 +413,7 @@ const ConsultantPortalPage = () => {
   const pendingAmount = pendingInvoices.reduce((s, i) => s + (parseFloat(i.total) || 0), 0)
   const pendingFollowups = followups.filter(f => f.status === 'pending')
   const totalPlacements = placements.length
+  const openVacancies = vacancies.filter(v => v.status === 'open').length
 
   if (!isLoggedIn) {
     return (
@@ -471,6 +522,7 @@ const ConsultantPortalPage = () => {
             ['interviews', `Interview Letters (${interviewLetters.length})`, Calendar],
             ['invoices', `Invoices (${invoices.length})`, FileText],
             ['payments', `Payments (${payments.length})`, CreditCard],
+            ['vacancies', `Vacancies (${vacancies.length})`, Briefcase],
             ['followups', `Follow-ups (${pendingFollowups.length})`, Bell],
           ].map(([id, label, Icon]) => (
             <button key={id} onClick={() => setTab(id)}
@@ -482,7 +534,7 @@ const ConsultantPortalPage = () => {
 
         <div className="md:hidden w-full">
           <div className="flex gap-2 p-3 bg-white border-b overflow-x-auto">
-            {[['dashboard','Home'],['clients','Clients'],['placements','Placed'],['interviews','Letters'],['invoices','Invoices'],['payments','Payments'],['followups','Follow-up']].map(([id,label]) => (
+            {[['dashboard','Home'],['clients','Clients'],['placements','Placed'],['interviews','Letters'],['invoices','Invoices'],['payments','Payments'],['vacancies','Vacancies'],['followups','Follow-up']].map(([id,label]) => (
               <button key={id} onClick={() => setTab(id)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${tab===id?'bg-blue-700 text-white':'bg-gray-100 text-gray-600'}`}>{label}</button>
             ))}
@@ -524,6 +576,7 @@ const ConsultantPortalPage = () => {
                   ['+ Interview Letter', () => { setTab('interviews'); setShowLetterForm(true) }, 'bg-purple-600 text-white'],
                   ['+ Create Invoice', () => { setTab('invoices'); setShowInvoiceForm(true) }, 'bg-orange-500 text-white'],
                   ['+ Record Payment', () => { setTab('payments'); setShowPaymentForm(true) }, 'bg-teal-600 text-white'],
+                  ['+ Add Vacancy', () => { setTab('vacancies'); setShowVacancyForm(true) }, 'bg-indigo-600 text-white'],
                   ['+ Add Follow-up', () => { setTab('followups'); setShowFollowupForm(true) }, 'bg-red-500 text-white'],
                 ].map(([label, action, cls]) => (
                   <button key={label} onClick={action} className={`${cls} rounded-xl py-3 text-sm font-bold hover:opacity-90 transition-opacity`}>{label}</button>
@@ -799,6 +852,32 @@ const ConsultantPortalPage = () => {
       </div>
 
       {/* MODALS */}
+      <Modal show={showVacancyForm} onClose={() => setShowVacancyForm(false)} title="Add New Vacancy">
+        <div className="space-y-3">
+          <select value={vacancyForm.client_id} onChange={e => setVacancyForm({...vacancyForm, client_id:e.target.value})} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="">Select Client*</option>
+            {clients.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
+          </select>
+          <input placeholder="Job Title*" value={vacancyForm.title} onChange={e => setVacancyForm({...vacancyForm, title:e.target.value})} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <textarea placeholder="Job Description" value={vacancyForm.description} onChange={e => setVacancyForm({...vacancyForm, description:e.target.value})} rows={3} className="w-full border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
+          <input placeholder="Required Skills (comma separated)" value={vacancyForm.required_skills} onChange={e => setVacancyForm({...vacancyForm, required_skills:e.target.value})} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <div className="grid grid-cols-2 gap-3">
+            <input placeholder="Location" value={vacancyForm.location} onChange={e => setVacancyForm({...vacancyForm, location:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <input placeholder="Salary Range (e.g. 8-12 LPA)" value={vacancyForm.salary_range} onChange={e => setVacancyForm({...vacancyForm, salary_range:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <input placeholder="Min Experience (years)" type="number" value={vacancyForm.min_experience} onChange={e => setVacancyForm({...vacancyForm, min_experience:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <input placeholder="No. of Positions" type="number" value={vacancyForm.vacancy_count} onChange={e => setVacancyForm({...vacancyForm, vacancy_count:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <select value={vacancyForm.priority} onChange={e => setVacancyForm({...vacancyForm, priority:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="low">Low Priority</option>
+              <option value="medium">Medium Priority</option>
+              <option value="high">High Priority</option>
+            </select>
+            <input type="date" placeholder="Target Date" value={vacancyForm.target_date} onChange={e => setVacancyForm({...vacancyForm, target_date:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <textarea placeholder="Notes" value={vacancyForm.notes} onChange={e => setVacancyForm({...vacancyForm, notes:e.target.value})} rows={2} className="w-full border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
+          <button onClick={addVacancy} className="w-full h-11 bg-indigo-600 text-white font-bold rounded-xl">Add Vacancy</button>
+        </div>
+      </Modal>
+
       <Modal show={showClientForm} onClose={() => setShowClientForm(false)} title="Add New Client">
         <div className="space-y-3">
           <input placeholder="Company Name*" value={clientForm.company_name} onChange={e => setClientForm({...clientForm, company_name:e.target.value})} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
