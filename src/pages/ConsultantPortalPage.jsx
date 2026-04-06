@@ -22,6 +22,10 @@ const ConsultantPortalPage = () => {
   const [followups, setFollowups] = useState([])
   const [interviewLetters, setInterviewLetters] = useState([])
   const [vacancies, setVacancies] = useState([])
+  const [vacancyMatches, setVacancyMatches] = useState([])
+  const [matchingVacancyId, setMatchingVacancyId] = useState(null)
+  const [showMatchesModal, setShowMatchesModal] = useState(false)
+  const [selectedVacancyMatches, setSelectedVacancyMatches] = useState([])
 
   // Forms
   const [loginForm, setLoginForm] = useState({ email: '', password: '' })
@@ -181,6 +185,88 @@ const ConsultantPortalPage = () => {
     await loadData(consultant.id)
   }
 
+  const runAIMatchingForVacancy = async (vacancy, vacancyId) => {
+    try {
+      // Get all candidates from Zenrixi DB
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/candidates?select=*`, { headers: h })
+      const allCandidates = await res.json()
+      if (!allCandidates.length) return
+
+      setMatchingVacancyId(vacancyId)
+
+      const OPENAI_KEY = import.meta.env.VITE_OPENAI_KEY
+      let matched = 0
+
+      for (const candidate of allCandidates.slice(0, 50)) { // max 50 candidates
+        try {
+          const prompt = \`You are an expert HR consultant. Score this candidate for the vacancy.
+Return ONLY valid JSON: {"score": 85, "reason": "Strong match because..."}
+Score 0-100 based on skills, experience, and job fit.
+
+VACANCY: \${vacancy.title}
+Required Skills: \${Array.isArray(vacancy.required_skills) ? vacancy.required_skills.join(', ') : vacancy.required_skills}
+Min Experience: \${vacancy.min_experience} years
+Location: \${vacancy.location || 'Any'}
+
+CANDIDATE: \${candidate.name}
+Current Role: \${candidate.job_title || 'N/A'}
+Experience: \${candidate.experience_years || 0} years
+Skills: \${Array.isArray(candidate.parsed_skills) ? candidate.parsed_skills.join(', ') : 'N/A'}
+Location: \${candidate.location || 'N/A'}\`
+
+          const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': \`Bearer \${OPENAI_KEY}\` },
+            body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: prompt }], max_tokens: 150 })
+          })
+          const aiData = await aiRes.json()
+          const text = aiData.choices?.[0]?.message?.content || '{}'
+          const result = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g, '').trim())
+
+          if ((result.score || 0) >= 40) { // Only save 40%+ matches
+            await fetch(\`\${SUPABASE_URL}/rest/v1/vacancy_matches\`, {
+              method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' },
+              body: JSON.stringify({
+                consultant_id: consultant.id,
+                vacancy_id: vacancyId,
+                candidate_id: candidate.id,
+                ai_score: result.score || 0,
+                match_reason: result.reason || '',
+                status: 'pending'
+              })
+            })
+            matched++
+          }
+        } catch(e) { console.error('AI error for candidate:', e) }
+      }
+
+      setMatchingVacancyId(null)
+      alert(\`AI Matching Complete! \${matched} candidates matched for "\${vacancy.title}"\`)
+      await loadData(consultant.id)
+    } catch(e) {
+      setMatchingVacancyId(null)
+      console.error('Matching failed:', e)
+    }
+  }
+
+  const viewVacancyMatches = async (vacancyId) => {
+    try {
+      const res = await fetch(\`\${SUPABASE_URL}/rest/v1/vacancy_matches?vacancy_id=eq.\${vacancyId}&select=*,candidates(name,email,phone,job_title,experience_years,parsed_skills,resume_url)&order=ai_score.desc\`, { headers: h })
+      const data = await res.json()
+      setSelectedVacancyMatches(Array.isArray(data) ? data : [])
+      setShowMatchesModal(true)
+    } catch(e) { console.error(e) }
+  }
+
+  const updateMatchStatus = async (matchId, status) => {
+    await fetch(\`\${SUPABASE_URL}/rest/v1/vacancy_matches?id=eq.\${matchId}\`, {
+      method: 'PATCH', headers: { ...h, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ status })
+    })
+    const updated = selectedVacancyMatches.map(m => m.id === matchId ? {...m, status} : m)
+    setSelectedVacancyMatches(updated)
+  }
+
   const addVacancy = async () => {
     if (!vacancyForm.title || !vacancyForm.client_id) { alert('Client aur Title required hai'); return }
     const skillsArray = vacancyForm.required_skills.split(',').map(s => s.trim()).filter(Boolean)
@@ -188,9 +274,15 @@ const ConsultantPortalPage = () => {
       method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' },
       body: JSON.stringify({ ...vacancyForm, consultant_id: consultant.id, required_skills: skillsArray, min_experience: parseInt(vacancyForm.min_experience)||0, vacancy_count: parseInt(vacancyForm.vacancy_count)||1 })
     })
+    const res2 = await fetch(`${SUPABASE_URL}/rest/v1/consultant_vacancies?consultant_id=eq.${consultant.id}&order=created_at.desc&limit=1`, { headers: h })
+    const newVac = await res2.json()
     setVacancyForm({ client_id: '', title: '', description: '', required_skills: '', min_experience: '0', location: '', salary_range: '', vacancy_count: '1', priority: 'medium', target_date: '', notes: '' })
     setShowVacancyForm(false)
     await loadData(consultant.id)
+    // Auto trigger AI matching
+    if (newVac[0]) {
+      setTimeout(() => runAIMatchingForVacancy(newVac[0], newVac[0].id), 500)
+    }
   }
 
   const updateVacancyStatus = async (id, status) => {
@@ -852,6 +944,66 @@ const ConsultantPortalPage = () => {
       </div>
 
       {/* MODALS */}
+      {/* AI Matches Modal */}
+      {showMatchesModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowMatchesModal(false)}>
+          <div className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-5">
+              <div>
+                <h3 className="text-lg font-bold">AI Matched Candidates</h3>
+                <p className="text-sm text-gray-500">{selectedVacancyMatches.length} candidates matched</p>
+              </div>
+              <button onClick={() => setShowMatchesModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+            </div>
+            {selectedVacancyMatches.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-400">No matches yet. Run AI Matching first!</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {selectedVacancyMatches.map(match => (
+                  <div key={match.id} className="border rounded-xl p-4 hover:shadow-sm transition-shadow">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                          {match.candidates?.name?.charAt(0)?.toUpperCase()}
+                        </div>
+                        <div>
+                          <h4 className="font-bold">{match.candidates?.name}</h4>
+                          <p className="text-xs text-gray-500">{match.candidates?.job_title} • {match.candidates?.experience_years}yr exp</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-black text-indigo-600">{match.ai_score}%</div>
+                        <select value={match.status} onChange={e => updateMatchStatus(match.id, e.target.value)}
+                          className="text-xs border rounded-lg px-2 py-0.5 mt-1 focus:outline-none">
+                          <option value="pending">Pending</option>
+                          <option value="shortlisted">Shortlisted</option>
+                          <option value="interview_scheduled">Interview Scheduled</option>
+                          <option value="selected">Selected</option>
+                          <option value="rejected">Rejected</option>
+                        </select>
+                      </div>
+                    </div>
+                    {match.match_reason && <p className="text-xs text-gray-500 mt-2 bg-gray-50 p-2 rounded-lg">{match.match_reason}</p>}
+                    {Array.isArray(match.candidates?.parsed_skills) && match.candidates.parsed_skills.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {match.candidates.parsed_skills.slice(0,5).map((s,i) => <span key={i} className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full">{s}</span>)}
+                      </div>
+                    )}
+                    <div className="flex gap-2 mt-3">
+                      {match.candidates?.email && <a href={`mailto:${match.candidates.email}`} className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">✉️ Email</a>}
+                      {match.candidates?.phone && <a href={`tel:${match.candidates.phone}`} className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700">📞 Call</a>}
+                      {match.candidates?.resume_url && <a href={match.candidates.resume_url} target="_blank" rel="noreferrer" className="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700">📄 Resume</a>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <Modal show={showVacancyForm} onClose={() => setShowVacancyForm(false)} title="Add New Vacancy">
         <div className="space-y-3">
           <select value={vacancyForm.client_id} onChange={e => setVacancyForm({...vacancyForm, client_id:e.target.value})} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
