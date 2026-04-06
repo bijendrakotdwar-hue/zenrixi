@@ -17,6 +17,7 @@ const Footer = () => (
             <li><Link to="/companies" className="hover:text-blue-600">Top Companies</Link></li>
             <li><Link to="/signup" className="hover:text-blue-600">Register as Candidate</Link></li>
             <li><Link to="/candidate-portal" className="hover:text-blue-600">Candidate Login</Link></li>
+            <li><Link to="/app" className="hover:text-purple-600 font-medium">📱 Download App</Link></li>
           </ul>
         </div>
         <div>
