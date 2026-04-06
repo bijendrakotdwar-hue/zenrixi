@@ -217,16 +217,6 @@ const AIAgents = () => {
       color: 'linear-gradient(135deg, #2563eb, #4f46e5)',
       colorSolid: '#2563eb',
       desc: 'Platform Support'
-    },
-    {
-      id: 'marketing',
-      title: 'MarketBot',
-      emoji: '📢',
-      system: MARKETING_SYSTEM,
-      placeholder: 'I can create marketing content, emails, and strategies for Zenrixi!',
-      color: 'linear-gradient(135deg, #059669, #0d9488)',
-      colorSolid: '#059669',
-      desc: 'Marketing Agent'
     }
   ]
 
@@ -285,7 +275,7 @@ const AIAgents = () => {
 
       {/* FAB Button */}
       <button
-        onClick={() => { setShowMenu(!showMenu); setActiveAgent(null) }}
+        onClick={() => { setActiveAgent(activeAgent ? null : 'support'); setShowMenu(false) }}
         style={{
           position: 'fixed', bottom: 24, right: 20,
           width: 60, height: 60, borderRadius: 20,
