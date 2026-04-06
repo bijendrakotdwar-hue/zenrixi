@@ -32,6 +32,7 @@ const CompanyPortalPage = () => {
   const [showForgot, setShowForgot] = useState(false)
   const [forgotEmail, setForgotEmail] = useState('')
   const [selectedCandidate, setSelectedCandidate] = useState(null)
+  const [editingJob, setEditingJob] = useState(null)
   const [showInterviewModal, setShowInterviewModal] = useState(false)
   const [showOfferModal, setShowOfferModal] = useState(false)
   const [interviewData, setInterviewData] = useState({ scheduled_at: '', duration_minutes: 60, interview_type: 'video', meeting_link: '', interviewer_name: '', notes: '' })
@@ -230,6 +231,32 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
     }
   }
 
+  const deleteJob = async (jobId) => {
+    if (!confirm('Are you sure you want to delete this job?')) return
+    await fetch(`${SUPABASE_URL}/rest/v1/jobs?id=eq.${jobId}`, {
+      method: 'DELETE', headers: h
+    })
+    await loadData(company.id)
+  }
+
+  const updateJob = async () => {
+    if (!editingJob.title) { alert('Title required'); return }
+    const skillsArray = typeof editingJob.required_skills === 'string'
+      ? editingJob.required_skills.split(',').map(s => s.trim()).filter(Boolean)
+      : editingJob.required_skills
+    await fetch(`${SUPABASE_URL}/rest/v1/jobs?id=eq.${editingJob.id}`, {
+      method: 'PATCH', headers: { ...h, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        title: editingJob.title,
+        description: editingJob.description,
+        required_skills: skillsArray,
+        min_experience: parseInt(editingJob.min_experience) || 0,
+      })
+    })
+    setEditingJob(null)
+    await loadData(company.id)
+  }
+
   const toggleJobStatus = async (jobId, currentStatus) => {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active'
     await fetch(`${SUPABASE_URL}/rest/v1/jobs?id=eq.${jobId}`, {
@@ -272,6 +299,7 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
   const upcomingInterviews = interviews.filter(i => i.status === 'scheduled')
 
   if (!isLoggedIn) {
+    // EditJobModal rendered in logged-in view
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
         <header className="bg-white shadow-sm py-4 px-6 flex items-center justify-between">
