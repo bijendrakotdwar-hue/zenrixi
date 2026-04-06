@@ -239,14 +239,7 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
     await loadData(company.id)
   }
 
-  const toggleJobStatus = async (jobId, currentStatus) => {
-    const newStatus = currentStatus === 'active' ? 'inactive' : 'active'
-    await fetch(`${SUPABASE_URL}/rest/v1/jobs?id=eq.${jobId}`, {
-      method: 'PATCH', headers: { ...h, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ status: newStatus })
-    })
-    await loadData(company.id)
-  }
+
 
   const postJob = async () => {
     if (!job.title||!job.description||!job.skills) { setError('Title, description and skills are required'); return }
