@@ -121,6 +121,14 @@ const ConsultantPortalPage = () => {
     await loadData(consultant.id)
   }
 
+  const deleteRecord = async (table, id) => {
+    if (!confirm('Are you sure you want to delete this record?')) return
+    await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+      method: 'DELETE', headers: h
+    })
+    await loadData(consultant.id)
+  }
+
   const addPlacement = async () => {
     if (!placementForm.candidate_name || !placementForm.position) { alert('Fill required fields'); return }
     const ctc = parseFloat(placementForm.ctc) || 0
@@ -521,7 +529,7 @@ Location: \${candidate.location || 'N/A'}\`
               {error && <p className="text-red-600 text-sm mb-4 bg-red-50 p-3 rounded-xl">{error}</p>}
               <div className="space-y-3">
                 <input type="email" placeholder="Email" value={loginForm.email} onChange={e => setLoginForm({...loginForm, email:e.target.value})}
-                  className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <div className="relative">
                   <input type={showPass?'text':'password'} placeholder="Password" value={loginForm.password} onChange={e => setLoginForm({...loginForm, password:e.target.value})}
                     onKeyDown={e => e.key==='Enter'&&handleLogin()}
@@ -766,6 +774,7 @@ Location: \${candidate.location || 'N/A'}\`
                         </div>
                       </div>
                       {p.joining_date && <p className="text-xs text-gray-400 mt-2">Joining: {new Date(p.joining_date).toLocaleDateString('en-IN')}</p>}
+                      <button onClick={() => deleteRecord('placements', p.id)} className="text-xs text-red-500 hover:text-red-700 mt-2">🗑 Delete</button>
                     </div>
                   ))}
                 </div>
@@ -839,6 +848,7 @@ Location: \${candidate.location || 'N/A'}\`
                         </div>
                       </div>
                       <div className="flex gap-2 mt-3">
+                        <button onClick={() => deleteRecord('invoices', inv.id)} className="text-xs bg-red-100 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-200">🗑</button>
                         <button onClick={() => generateInvoicePDF(inv)} className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1">
                           <Download className="w-3 h-3" /> Download
                         </button>
@@ -932,6 +942,7 @@ Location: \${candidate.location || 'N/A'}\`
                           {f.status === 'pending' && (
                             <button onClick={() => completeFollowup(f.id)} className="text-xs bg-green-600 text-white px-3 py-1 rounded-lg">✓ Done</button>
                           )}
+                          <button onClick={() => deleteRecord('followups', f.id)} className="text-xs text-red-400 hover:text-red-600">🗑</button>
                         </div>
                       </div>
                     </div>
@@ -1010,20 +1021,20 @@ Location: \${candidate.location || 'N/A'}\`
             <option value="">Select Client*</option>
             {clients.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
           </select>
-          <input placeholder="Job Title*" value={vacancyForm.title} onChange={e => setVacancyForm({...vacancyForm, title:e.target.value})} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <input placeholder="Job Title*" value={vacancyForm.title} onChange={e => setVacancyForm({...vacancyForm, title:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
           <textarea placeholder="Job Description" value={vacancyForm.description} onChange={e => setVacancyForm({...vacancyForm, description:e.target.value})} rows={3} className="w-full border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
-          <input placeholder="Required Skills (comma separated)" value={vacancyForm.required_skills} onChange={e => setVacancyForm({...vacancyForm, required_skills:e.target.value})} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <input placeholder="Required Skills (comma separated)" value={vacancyForm.required_skills} onChange={e => setVacancyForm({...vacancyForm, required_skills:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
           <div className="grid grid-cols-2 gap-3">
-            <input placeholder="Location" value={vacancyForm.location} onChange={e => setVacancyForm({...vacancyForm, location:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-            <input placeholder="Salary Range (e.g. 8-12 LPA)" value={vacancyForm.salary_range} onChange={e => setVacancyForm({...vacancyForm, salary_range:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-            <input placeholder="Min Experience (years)" type="number" value={vacancyForm.min_experience} onChange={e => setVacancyForm({...vacancyForm, min_experience:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-            <input placeholder="No. of Positions" type="number" value={vacancyForm.vacancy_count} onChange={e => setVacancyForm({...vacancyForm, vacancy_count:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <input placeholder="Location" value={vacancyForm.location} onChange={e => setVacancyForm({...vacancyForm, location:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <input placeholder="Salary Range (e.g. 8-12 LPA)" value={vacancyForm.salary_range} onChange={e => setVacancyForm({...vacancyForm, salary_range:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <input placeholder="Min Experience (years)" type="number" value={vacancyForm.min_experience} onChange={e => setVacancyForm({...vacancyForm, min_experience:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <input placeholder="No. of Positions" type="number" value={vacancyForm.vacancy_count} onChange={e => setVacancyForm({...vacancyForm, vacancy_count:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
             <select value={vacancyForm.priority} onChange={e => setVacancyForm({...vacancyForm, priority:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
               <option value="low">Low Priority</option>
               <option value="medium">Medium Priority</option>
               <option value="high">High Priority</option>
             </select>
-            <input type="date" placeholder="Target Date" value={vacancyForm.target_date} onChange={e => setVacancyForm({...vacancyForm, target_date:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <input type="date" placeholder="Target Date" value={vacancyForm.target_date} onChange={e => setVacancyForm({...vacancyForm, target_date:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
           </div>
           <textarea placeholder="Notes" value={vacancyForm.notes} onChange={e => setVacancyForm({...vacancyForm, notes:e.target.value})} rows={2} className="w-full border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
           <button onClick={addVacancy} className="w-full h-11 bg-indigo-600 text-white font-bold rounded-xl">Add Vacancy</button>
@@ -1032,13 +1043,13 @@ Location: \${candidate.location || 'N/A'}\`
 
       <Modal show={showClientForm} onClose={() => setShowClientForm(false)} title="Add New Client">
         <div className="space-y-3">
-          <input placeholder="Company Name*" value={clientForm.company_name} onChange={e => setClientForm({...clientForm, company_name:e.target.value})} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          <input placeholder="Contact Person" value={clientForm.contact_person} onChange={e => setClientForm({...clientForm, contact_person:e.target.value})} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input placeholder="Company Name*" value={clientForm.company_name} onChange={e => setClientForm({...clientForm, company_name:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input placeholder="Contact Person" value={clientForm.contact_person} onChange={e => setClientForm({...clientForm, contact_person:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           <div className="grid grid-cols-2 gap-3">
-            <input placeholder="Email" value={clientForm.email} onChange={e => setClientForm({...clientForm, email:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <input placeholder="Phone" value={clientForm.phone} onChange={e => setClientForm({...clientForm, phone:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input placeholder="Email" value={clientForm.email} onChange={e => setClientForm({...clientForm, email:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input placeholder="Phone" value={clientForm.phone} onChange={e => setClientForm({...clientForm, phone:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-          <input placeholder="GST Number" value={clientForm.gst_number} onChange={e => setClientForm({...clientForm, gst_number:e.target.value})} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input placeholder="GST Number" value={clientForm.gst_number} onChange={e => setClientForm({...clientForm, gst_number:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           <textarea placeholder="Address" value={clientForm.address} onChange={e => setClientForm({...clientForm, address:e.target.value})} rows={2} className="w-full border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
           <button onClick={addClient} className="w-full h-11 bg-blue-700 text-white font-bold rounded-xl">Add Client</button>
         </div>
@@ -1051,14 +1062,14 @@ Location: \${candidate.location || 'N/A'}\`
             {clients.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
           </select>
           <div className="grid grid-cols-2 gap-3">
-            <input placeholder="Candidate Name*" value={placementForm.candidate_name} onChange={e => setPlacementForm({...placementForm, candidate_name:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <input placeholder="Position*" value={placementForm.position} onChange={e => setPlacementForm({...placementForm, position:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <input placeholder="Email" value={placementForm.candidate_email} onChange={e => setPlacementForm({...placementForm, candidate_email:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <input placeholder="Phone" value={placementForm.candidate_phone} onChange={e => setPlacementForm({...placementForm, candidate_phone:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <input placeholder="CTC Annual (₹)" type="number" value={placementForm.ctc} onChange={e => setPlacementForm({...placementForm, ctc:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <input placeholder="Commission %" type="number" value={placementForm.commission_percent} onChange={e => setPlacementForm({...placementForm, commission_percent:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input placeholder="Candidate Name*" value={placementForm.candidate_name} onChange={e => setPlacementForm({...placementForm, candidate_name:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input placeholder="Position*" value={placementForm.position} onChange={e => setPlacementForm({...placementForm, position:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input placeholder="Email" value={placementForm.candidate_email} onChange={e => setPlacementForm({...placementForm, candidate_email:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input placeholder="Phone" value={placementForm.candidate_phone} onChange={e => setPlacementForm({...placementForm, candidate_phone:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input placeholder="CTC Annual (₹)" type="number" value={placementForm.ctc} onChange={e => setPlacementForm({...placementForm, ctc:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input placeholder="Commission %" type="number" value={placementForm.commission_percent} onChange={e => setPlacementForm({...placementForm, commission_percent:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-          <input type="date" value={placementForm.joining_date} onChange={e => setPlacementForm({...placementForm, joining_date:e.target.value})} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input type="date" value={placementForm.joining_date} onChange={e => setPlacementForm({...placementForm, joining_date:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           {placementForm.ctc && placementForm.commission_percent && (
             <div className="bg-green-50 p-3 rounded-xl text-sm text-green-700 font-medium">
               Commission: ₹{((parseFloat(placementForm.ctc) * parseFloat(placementForm.commission_percent)) / 100).toLocaleString('en-IN')}
@@ -1075,21 +1086,21 @@ Location: \${candidate.location || 'N/A'}\`
             {clients.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
           </select>
           <div className="grid grid-cols-2 gap-3">
-            <input placeholder="Candidate Name*" value={letterForm.candidate_name} onChange={e => setLetterForm({...letterForm, candidate_name:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
-            <input placeholder="Candidate Email" value={letterForm.candidate_email} onChange={e => setLetterForm({...letterForm, candidate_email:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
+            <input placeholder="Candidate Name*" value={letterForm.candidate_name} onChange={e => setLetterForm({...letterForm, candidate_name:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
+            <input placeholder="Candidate Email" value={letterForm.candidate_email} onChange={e => setLetterForm({...letterForm, candidate_email:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
           </div>
-          <input placeholder="Position*" value={letterForm.position} onChange={e => setLetterForm({...letterForm, position:e.target.value})} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
-          <input type="datetime-local" value={letterForm.interview_date} onChange={e => setLetterForm({...letterForm, interview_date:e.target.value})} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
+          <input placeholder="Position*" value={letterForm.position} onChange={e => setLetterForm({...letterForm, position:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
+          <input type="datetime-local" value={letterForm.interview_date} onChange={e => setLetterForm({...letterForm, interview_date:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
           <div className="grid grid-cols-2 gap-3">
             <select value={letterForm.interview_type} onChange={e => setLetterForm({...letterForm, interview_type:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
               <option value="in-person">In Person</option>
               <option value="video">Video Call</option>
               <option value="phone">Phone</option>
             </select>
-            <input placeholder="Interviewer Name" value={letterForm.interviewer_name} onChange={e => setLetterForm({...letterForm, interviewer_name:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
+            <input placeholder="Interviewer Name" value={letterForm.interviewer_name} onChange={e => setLetterForm({...letterForm, interviewer_name:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
           </div>
-          <input placeholder="Venue / Location" value={letterForm.interview_location} onChange={e => setLetterForm({...letterForm, interview_location:e.target.value})} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
-          <input placeholder="Meeting Link (for video)" value={letterForm.meeting_link} onChange={e => setLetterForm({...letterForm, meeting_link:e.target.value})} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
+          <input placeholder="Venue / Location" value={letterForm.interview_location} onChange={e => setLetterForm({...letterForm, interview_location:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
+          <input placeholder="Meeting Link (for video)" value={letterForm.meeting_link} onChange={e => setLetterForm({...letterForm, meeting_link:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
           <button onClick={generateInterviewLetter} className="w-full h-11 bg-purple-600 text-white font-bold rounded-xl flex items-center justify-center gap-2">
             <Download className="w-4 h-4" /> Generate & Download Letter
           </button>
@@ -1102,7 +1113,7 @@ Location: \${candidate.location || 'N/A'}\`
             <option value="">Select Client*</option>
             {clients.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
           </select>
-          <input type="date" placeholder="Due Date" value={invoiceForm.due_date} onChange={e => setInvoiceForm({...invoiceForm, due_date:e.target.value})} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
+          <input type="date" placeholder="Due Date" value={invoiceForm.due_date} onChange={e => setInvoiceForm({...invoiceForm, due_date:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
           <div className="border rounded-xl p-3">
             <p className="text-sm font-semibold mb-2">Items</p>
             {invoiceForm.items.map((item, idx) => (
@@ -1141,8 +1152,8 @@ Location: \${candidate.location || 'N/A'}\`
             {invoices.filter(i=>i.status==='unpaid').map(i => <option key={i.id} value={i.id}>#{i.invoice_number} — ₹{Number(i.total).toLocaleString('en-IN')}</option>)}
           </select>
           <div className="grid grid-cols-2 gap-3">
-            <input placeholder="Amount (₹)*" type="number" value={paymentForm.amount} onChange={e => setPaymentForm({...paymentForm, amount:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
-            <input type="date" value={paymentForm.payment_date} onChange={e => setPaymentForm({...paymentForm, payment_date:e.target.value})} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+            <input placeholder="Amount (₹)*" type="number" value={paymentForm.amount} onChange={e => setPaymentForm({...paymentForm, amount:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+            <input type="date" value={paymentForm.payment_date} onChange={e => setPaymentForm({...paymentForm, payment_date:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
           </div>
           <select value={paymentForm.payment_mode} onChange={e => setPaymentForm({...paymentForm, payment_mode:e.target.value})} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
             <option value="bank_transfer">Bank Transfer</option>
@@ -1151,7 +1162,7 @@ Location: \${candidate.location || 'N/A'}\`
             <option value="cash">Cash</option>
             <option value="neft">NEFT/RTGS</option>
           </select>
-          <input placeholder="Reference Number" value={paymentForm.reference_number} onChange={e => setPaymentForm({...paymentForm, reference_number:e.target.value})} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+          <input placeholder="Reference Number" value={paymentForm.reference_number} onChange={e => setPaymentForm({...paymentForm, reference_number:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
           <textarea placeholder="Notes" value={paymentForm.notes} onChange={e => setPaymentForm({...paymentForm, notes:e.target.value})} rows={2} className="w-full border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none" />
           <button onClick={addPayment} className="w-full h-11 bg-teal-600 text-white font-bold rounded-xl">Record Payment</button>
         </div>
@@ -1176,9 +1187,9 @@ Location: \${candidate.location || 'N/A'}\`
               <option value="high">High Priority</option>
             </select>
           </div>
-          <input placeholder="Subject*" value={followupForm.subject} onChange={e => setFollowupForm({...followupForm, subject:e.target.value})} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-red-400" />
+          <input placeholder="Subject*" value={followupForm.subject} onChange={e => setFollowupForm({...followupForm, subject:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-red-400" />
           <textarea placeholder="Notes" value={followupForm.notes} onChange={e => setFollowupForm({...followupForm, notes:e.target.value})} rows={2} className="w-full border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none" />
-          <input type="date" value={followupForm.follow_up_date} onChange={e => setFollowupForm({...followupForm, follow_up_date:e.target.value})} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-red-400" />
+          <input type="date" value={followupForm.follow_up_date} onChange={e => setFollowupForm({...followupForm, follow_up_date:e.target.value})} onKeyDown={e => e.key==='Enter' && e.preventDefault()} className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-red-400" />
           <button onClick={addFollowup} className="w-full h-11 bg-red-500 text-white font-bold rounded-xl">Add Follow-up</button>
         </div>
       </Modal>
