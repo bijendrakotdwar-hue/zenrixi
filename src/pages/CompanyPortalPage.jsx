@@ -230,6 +230,15 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
     }
   }
 
+  const toggleJobStatus = async (jobId, currentStatus) => {
+    const newStatus = currentStatus === 'active' ? 'inactive' : 'active'
+    await fetch(`${SUPABASE_URL}/rest/v1/jobs?id=eq.${jobId}`, {
+      method: 'PATCH', headers: { ...h, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ status: newStatus })
+    })
+    await loadData(company.id)
+  }
+
   const postJob = async () => {
     if (!job.title||!job.description||!job.skills) { setError('Title, description and skills are required'); return }
     setLoading(true)
@@ -381,12 +390,13 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {[
-                  ['Active Jobs', activeJobs.length, 'bg-blue-500', Briefcase],
-                  ['Total Matches', matches.length, 'bg-purple-500', Users],
-                  ['Shortlisted', shortlisted.length, 'bg-green-500', CheckCircle],
-                  ['Interviews', upcomingInterviews.length, 'bg-orange-500', Calendar],
-                ].map(([label, value, color, Icon]) => (
-                  <div key={label} className="bg-white rounded-2xl border p-5 flex items-center gap-4">
+                  ['Active Jobs', activeJobs.length, 'bg-blue-500', Briefcase, 'jobs'],
+                  ['Total Matches', matches.length, 'bg-purple-500', Users, 'candidates'],
+                  ['Shortlisted', shortlisted.length, 'bg-green-500', CheckCircle, 'candidates'],
+                  ['Interviews', upcomingInterviews.length, 'bg-orange-500', Calendar, 'interviews'],
+                ].map(([label, value, color, Icon, targetTab]) => (
+                  <div key={label} onClick={() => setTab(targetTab)}
+                    className="bg-white rounded-2xl border p-5 flex items-center gap-4 cursor-pointer hover:shadow-md hover:border-blue-200 transition-all">
                     <div className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center`}>
                       <Icon className="w-6 h-6 text-white" />
                     </div>
