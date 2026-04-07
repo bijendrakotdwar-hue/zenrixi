@@ -365,6 +365,7 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      <EditJobModal />
       {/* Header */}
       <header className="bg-white border-b py-3 px-6 flex items-center justify-between sticky top-0 z-20 shadow-sm">
         <Link to="/" className="text-lg font-extrabold text-blue-600">zenrixi</Link>
