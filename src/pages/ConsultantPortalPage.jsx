@@ -10,6 +10,9 @@ const ConsultantPortalPage = () => {
   const [consultant, setConsultant] = useState(null)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isRegister, setIsRegister] = useState(false)
+  const [otpSent, setOtpSent] = useState(false)
+  const [otpInput, setOtpInput] = useState('')
+  const [pendingReg, setPendingReg] = useState(null)
   const [showForgotConsultant, setShowForgotConsultant] = useState(false)
   const [forgotConsultantEmail, setForgotConsultantEmail] = useState('')
   const [showPass, setShowPass] = useState(false)
@@ -275,6 +278,62 @@ Location: \${candidate.location || 'N/A'}`
     })
     const updated = selectedVacancyMatches.map(m => m.id === matchId ? {...m, status} : m)
     setSelectedVacancyMatches(updated)
+  }
+
+  const postJobForConsultant = async () => {
+    if (!jobForm.title || !jobForm.description || !jobForm.skills) { alert('Title, description and skills required'); return }
+    setJobLoading(true)
+    try {
+      const skillsArray = jobForm.skills.split(',').map(s => s.trim()).filter(Boolean)
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/jobs`, {
+        method: 'POST', headers: { ...h, 'Prefer': 'return=representation' },
+        body: JSON.stringify({
+          title: jobForm.title, description: jobForm.description,
+          required_skills: skillsArray, min_experience: parseInt(jobForm.experience)||0,
+          location: jobForm.location, status: 'active',
+          posted_by_consultant: consultant.id, company_id: null
+        })
+      })
+      if (!res.ok) throw new Error('Job post failed')
+      // LinkedIn auto post
+      try {
+        await fetch('/api/linkedin-post', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: jobForm.title, company_name: consultant.company_name || consultant.name,
+            location: jobForm.location || 'India', skills: jobForm.skills, experience: jobForm.experience
+          })
+        })
+      } catch(e) { console.log('LinkedIn:', e) }
+      setJobForm({ title: '', description: '', skills: '', experience: '0', location: '', salary: '' })
+      setShowJobForm(false)
+      await loadData(consultant.id)
+      alert('Job posted on Zenrixi + LinkedIn!')
+    } catch(e) { alert('Failed: ' + e.message) }
+    finally { setJobLoading(false) }
+  }
+
+  const addCandidateForConsultant = async () => {
+    if (!candidateForm.name || !candidateForm.email) { alert('Name and email required'); return }
+    try {
+      const check = await fetch(`${SUPABASE_URL}/rest/v1/candidates?email=eq.${encodeURIComponent(candidateForm.email)}&select=id`, { headers: h })
+      const existing = await check.json()
+      if (existing.length > 0) { alert('Candidate already exists in database!'); return }
+      const skillsArray = candidateForm.skills ? candidateForm.skills.split(',').map(s => s.trim()) : []
+      await fetch(`${SUPABASE_URL}/rest/v1/candidates`, {
+        method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({
+          name: candidateForm.name, email: candidateForm.email, phone: candidateForm.phone,
+          job_title: candidateForm.job_title, experience_years: parseInt(candidateForm.experience_years)||0,
+          parsed_skills: skillsArray, location: candidateForm.location,
+          password: 'Welcome@123', added_by_consultant: consultant.id
+        })
+      })
+      setCandidateForm({ name: '', email: '', phone: '', job_title: '', experience_years: '0', skills: '', location: '' })
+      setShowCandidateForm(false)
+      await loadData(consultant.id)
+      alert('Candidate added to Zenrixi database!')
+    } catch(e) { alert('Failed: ' + e.message) }
   }
 
   const addVacancy = async () => {
@@ -657,7 +716,7 @@ Location: \${candidate.location || 'N/A'}`
 
         <div className="md:hidden w-full">
           <div className="flex gap-2 p-3 bg-white border-b overflow-x-auto">
-            {[['dashboard','Home'],['clients','Clients'],['placements','Placed'],['interviews','Letters'],['invoices','Invoices'],['payments','Payments'],['vacancies','Vacancies'],['followups','Follow-up']].map(([id,label]) => (
+            {[['dashboard','Home'],['clients','Clients'],['placements','Placed'],['interviews','Letters'],['invoices','Invoices'],['payments','Payments'],['post-job','Post Job'],['my-candidates','Candidates'],['vacancies','Vacancies'],['followups','Follow-up']].map(([id,label]) => (
               <button key={id} onClick={() => setTab(id)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${tab===id?'bg-blue-700 text-white':'bg-gray-100 text-gray-600'}`}>{label}</button>
             ))}
