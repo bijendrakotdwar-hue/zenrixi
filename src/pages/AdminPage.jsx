@@ -31,6 +31,20 @@ const AdminPage = () => {
   const [supportChats, setSupportChats] = useState([])
   const [selectedSession, setSelectedSession] = useState(null)
   const [adminReply, setAdminReply] = useState('')
+  const [team, setTeam] = useState([])
+  const [showTeamForm, setShowTeamForm] = useState(false)
+  const [editingTeam, setEditingTeam] = useState(null)
+  const [teamForm, setTeamForm] = useState({
+    name: '', email: '', password: '', role: 'staff', status: 'active',
+    permissions: {
+      view_candidates: true, edit_candidates: false, delete_candidates: false,
+      view_companies: true, edit_companies: false, delete_companies: false,
+      view_jobs: true, edit_jobs: false, delete_jobs: false,
+      view_consultants: true, edit_consultants: false, delete_consultants: false,
+      view_invoices: false, view_payments: false, bulk_upload: false,
+      support_inbox: false, manage_users: false
+    }
+  })
 
   useEffect(() => {
     const saved = localStorage.getItem('admin_session')
@@ -73,6 +87,8 @@ const AdminPage = () => {
       setPlacements(await pl.json())
       setInvoices(await inv.json())
       setPayments(await pay.json())
+      const teamRes = await fetch(`${SUPABASE_URL}/rest/v1/admin_team?select=*&order=created_at.desc`, { headers: h })
+      setTeam(await teamRes.json())
       const scRes = await fetch(`${SUPABASE_URL}/rest/v1/support_chats?select=*&order=created_at.desc`, { headers: h })
       setSupportChats(await scRes.json())
     } catch(e) { console.error(e) }
@@ -214,6 +230,67 @@ const AdminPage = () => {
     alert('Updated successfully!')
   }
 
+  const addTeamMember = async () => {
+    if (!teamForm.name || !teamForm.email || !teamForm.password) { alert('Name, email, password required'); return }
+    const method = editingTeam ? 'PATCH' : 'POST'
+    const url = editingTeam 
+      ? `${SUPABASE_URL}/rest/v1/admin_team?id=eq.${editingTeam.id}`
+      : `${SUPABASE_URL}/rest/v1/admin_team`
+    await fetch(url, {
+      method, headers: { ...h, 'Prefer': 'return=minimal' },
+      body: JSON.stringify(teamForm)
+    })
+    setShowTeamForm(false)
+    setEditingTeam(null)
+    setTeamForm({
+      name: '', email: '', password: '', role: 'staff', status: 'active',
+      permissions: {
+        view_candidates: true, edit_candidates: false, delete_candidates: false,
+        view_companies: true, edit_companies: false, delete_companies: false,
+        view_jobs: true, edit_jobs: false, delete_jobs: false,
+        view_consultants: true, edit_consultants: false, delete_consultants: false,
+        view_invoices: false, view_payments: false, bulk_upload: false,
+        support_inbox: false, manage_users: false
+      }
+    })
+    await loadAllData()
+  }
+
+  const toggleTeamStatus = async (id, status) => {
+    await fetch(`${SUPABASE_URL}/rest/v1/admin_team?id=eq.${id}`, {
+      method: 'PATCH', headers: { ...h, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ status: status === 'active' ? 'inactive' : 'active' })
+    })
+    await loadAllData()
+  }
+
+  const PERMISSION_LABELS = {
+    view_candidates: 'View Candidates',
+    edit_candidates: 'Edit Candidates',
+    delete_candidates: 'Delete Candidates',
+    view_companies: 'View Companies',
+    edit_companies: 'Edit Companies',
+    delete_companies: 'Delete Companies',
+    view_jobs: 'View Jobs',
+    edit_jobs: 'Edit Jobs',
+    delete_jobs: 'Delete Jobs',
+    view_consultants: 'View Consultants',
+    edit_consultants: 'Edit Consultants',
+    delete_consultants: 'Delete Consultants',
+    view_invoices: 'View Invoices',
+    view_payments: 'View Payments',
+    bulk_upload: 'Bulk Upload',
+    support_inbox: 'Support Inbox',
+    manage_users: 'Manage Users'
+  }
+
+  const ROLE_PRESETS = {
+    admin: { view_candidates: true, edit_candidates: true, delete_candidates: true, view_companies: true, edit_companies: true, delete_companies: true, view_jobs: true, edit_jobs: true, delete_jobs: true, view_consultants: true, edit_consultants: true, delete_consultants: true, view_invoices: true, view_payments: true, bulk_upload: true, support_inbox: true, manage_users: true },
+    manager: { view_candidates: true, edit_candidates: true, delete_candidates: false, view_companies: true, edit_companies: true, delete_companies: false, view_jobs: true, edit_jobs: true, delete_jobs: false, view_consultants: true, edit_consultants: true, delete_consultants: false, view_invoices: true, view_payments: true, bulk_upload: true, support_inbox: true, manage_users: false },
+    staff: { view_candidates: true, edit_candidates: false, delete_candidates: false, view_companies: true, edit_companies: false, delete_companies: false, view_jobs: true, edit_jobs: false, delete_jobs: false, view_consultants: true, edit_consultants: false, delete_consultants: false, view_invoices: false, view_payments: false, bulk_upload: false, support_inbox: true, manage_users: false },
+    support: { view_candidates: false, edit_candidates: false, delete_candidates: false, view_companies: false, edit_companies: false, delete_companies: false, view_jobs: false, edit_jobs: false, delete_jobs: false, view_consultants: false, edit_consultants: false, delete_consultants: false, view_invoices: false, view_payments: false, bulk_upload: false, support_inbox: true, manage_users: false }
+  }
+
   const totalRevenue = payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0)
   const pendingInvoices = invoices.filter(i => i.status === 'unpaid')
 
@@ -288,7 +365,7 @@ const AdminPage = () => {
         {/* Mobile nav */}
         <div className="md:hidden w-full">
           <div className="flex gap-2 p-3 bg-white border-b overflow-x-auto">
-            {[['dashboard','Dashboard'],['candidates','Candidates'],['companies','Companies'],['jobs','Jobs'],['consultants','Consultants'],['invoices','Invoices'],['payments','Payments'],['bulk','Bulk Upload'],['support','Support']].map(([id,label]) => (
+            {[['dashboard','Dashboard'],['candidates','Candidates'],['companies','Companies'],['jobs','Jobs'],['consultants','Consultants'],['invoices','Invoices'],['payments','Payments'],['bulk','Bulk Upload'],['support','Support'],['team','Team']].map(([id,label]) => (
               <button key={id} onClick={() => setTab(id)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${tab===id?'bg-blue-600 text-white':'bg-gray-100 text-gray-600'}`}>{label}</button>
             ))}
@@ -641,6 +718,172 @@ const AdminPage = () => {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+        {/* TEAM MANAGEMENT */}
+          {tab === 'team' && (
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-black">User Management</h2>
+                  <p className="text-gray-500 text-sm mt-1">Add team members and manage their access rights</p>
+                </div>
+                <button onClick={() => { setShowTeamForm(true); setEditingTeam(null) }}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-blue-700">
+                  + Add User
+                </button>
+              </div>
+
+              {/* Role presets info */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                {[
+                  ['👑 Admin', 'Full access to everything', 'bg-purple-50 border-purple-200 text-purple-700'],
+                  ['🎯 Manager', 'View + Edit, no delete', 'bg-blue-50 border-blue-200 text-blue-700'],
+                  ['👤 Staff', 'View only + Support', 'bg-green-50 border-green-200 text-green-700'],
+                  ['🎧 Support', 'Support inbox only', 'bg-orange-50 border-orange-200 text-orange-700'],
+                ].map(([role, desc, cls]) => (
+                  <div key={role} className={`border rounded-xl p-3 \${cls}`}>
+                    <p className="font-bold text-sm">{role}</p>
+                    <p className="text-xs mt-1 opacity-80">{desc}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Team list */}
+              {team.length === 0 ? (
+                <div className="bg-white rounded-2xl border p-12 text-center">
+                  <div className="text-5xl mb-3">👥</div>
+                  <p className="text-gray-500">No team members yet. Add your first user!</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {team.map(member => (
+                    <div key={member.id} className="bg-white rounded-2xl border p-5">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg">
+                            {member.name?.charAt(0)?.toUpperCase()}
+                          </div>
+                          <div>
+                            <h3 className="font-bold">{member.name}</h3>
+                            <p className="text-sm text-gray-500">{member.email}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium \${member.role==='admin'?'bg-purple-100 text-purple-700':member.role==='manager'?'bg-blue-100 text-blue-700':member.role==='support'?'bg-orange-100 text-orange-700':'bg-green-100 text-green-700'}`}>
+                                {member.role}
+                              </span>
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium \${member.status==='active'?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}`}>
+                                {member.status}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => toggleTeamStatus(member.id, member.status)}
+                            className={`text-xs px-3 py-1.5 rounded-lg font-medium \${member.status==='active'?'bg-red-100 text-red-600 hover:bg-red-200':'bg-green-100 text-green-600 hover:bg-green-200'}`}>
+                            {member.status==='active' ? '⏸ Deactivate' : '▶ Activate'}
+                          </button>
+                          <button onClick={() => { setEditingTeam(member); setTeamForm({...member, password: ''}); setShowTeamForm(true) }}
+                            className="text-xs bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-200">✏️ Edit</button>
+                          <button onClick={() => deleteRecord('admin_team', member.id, member.name)}
+                            className="text-xs bg-red-100 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-200">🗑</button>
+                        </div>
+                      </div>
+
+                      {/* Permissions */}
+                      <div className="mt-3 pt-3 border-t">
+                        <p className="text-xs font-semibold text-gray-500 mb-2">PERMISSIONS</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {Object.entries(member.permissions || {}).filter(([k,v]) => v).map(([key]) => (
+                            <span key={key} className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
+                              {PERMISSION_LABELS[key] || key}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add/Edit User Modal */}
+              {showTeamForm && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowTeamForm(false)}>
+                  <div className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+                    <div className="flex justify-between items-center mb-5">
+                      <h3 className="text-lg font-bold">{editingTeam ? 'Edit User' : 'Add New User'}</h3>
+                      <button onClick={() => setShowTeamForm(false)} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+                    </div>
+
+                    {/* Basic info */}
+                    <div className="grid grid-cols-2 gap-3 mb-5">
+                      <div>
+                        <label className="text-xs font-semibold text-gray-500 block mb-1">Full Name*</label>
+                        <input value={teamForm.name} onChange={e => setTeamForm({...teamForm, name:e.target.value})}
+                          placeholder="e.g. Rahul Sharma"
+                          className="w-full h-10 border rounded-xl px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-500 block mb-1">Email*</label>
+                        <input type="email" value={teamForm.email} onChange={e => setTeamForm({...teamForm, email:e.target.value})}
+                          placeholder="rahul@zenrixi.com"
+                          className="w-full h-10 border rounded-xl px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-500 block mb-1">{editingTeam ? 'New Password (optional)' : 'Password*'}</label>
+                        <input type="password" value={teamForm.password} onChange={e => setTeamForm({...teamForm, password:e.target.value})}
+                          placeholder={editingTeam ? 'Leave blank to keep' : 'Set password'}
+                          className="w-full h-10 border rounded-xl px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-500 block mb-1">Role</label>
+                        <select value={teamForm.role} onChange={e => {
+                          const role = e.target.value
+                          setTeamForm({...teamForm, role, permissions: ROLE_PRESETS[role] || teamForm.permissions})
+                        }} className="w-full h-10 border rounded-xl px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          <option value="admin">👑 Admin</option>
+                          <option value="manager">🎯 Manager</option>
+                          <option value="staff">👤 Staff</option>
+                          <option value="support">🎧 Support</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Permissions */}
+                    <div className="border rounded-2xl p-4 mb-5">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-bold text-sm">Custom Permissions</h4>
+                        <div className="flex gap-2">
+                          <button onClick={() => setTeamForm({...teamForm, permissions: Object.fromEntries(Object.keys(PERMISSION_LABELS).map(k => [k, true]))})}
+                            className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-lg">All On</button>
+                          <button onClick={() => setTeamForm({...teamForm, permissions: Object.fromEntries(Object.keys(PERMISSION_LABELS).map(k => [k, false]))})}
+                            className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-lg">All Off</button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {Object.entries(PERMISSION_LABELS).map(([key, label]) => (
+                          <label key={key} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <div className="relative">
+                              <input type="checkbox" checked={teamForm.permissions[key] || false}
+                                onChange={e => setTeamForm({...teamForm, permissions: {...teamForm.permissions, [key]: e.target.checked}})}
+                                className="sr-only" />
+                              <div className={`w-9 h-5 rounded-full transition-colors \${teamForm.permissions[key] ? 'bg-blue-600' : 'bg-gray-200'}`}>
+                                <div className={`w-4 h-4 bg-white rounded-full shadow mt-0.5 transition-transform \${teamForm.permissions[key] ? 'translate-x-4 ml-0.5' : 'translate-x-0.5'}`} />
+                              </div>
+                            </div>
+                            <span className="text-sm text-gray-700">{label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <button onClick={addTeamMember}
+                      className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl">
+                      {editingTeam ? '💾 Save Changes' : '➕ Add User'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
