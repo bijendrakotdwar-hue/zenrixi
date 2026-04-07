@@ -20,6 +20,8 @@ const ConsultantPortalPage = () => {
   const [candidateFilter, setCandidateFilter] = useState('all')
   const [candidateStatuses, setCandidateStatuses] = useState({})
   const [allDbCandidates, setAllDbCandidates] = useState([])
+  const [aiParsing, setAiParsing] = useState(false)
+  const [parsedResume, setParsedResume] = useState(null)
 
   // Data
   const [partners, setPartners] = useState([])
@@ -43,7 +45,7 @@ const ConsultantPortalPage = () => {
   const [regForm, setRegForm] = useState({ name: '', email: '', password: '', phone: '', company_name: '', gst_number: '', address: '' })
   const [partnerForm, setPartnerForm] = useState({ company_name: '', industry: '', website: '', address: '', city: '', state: '', gst_number: '', pan_number: '', notes: '' })
   const [contactForm, setContactForm] = useState({ partner_id: '', name: '', designation: '', email: '', phone: '', whatsapp: '', department: '', is_primary: false, notes: '' })
-  const [candidateForm, setCandidateForm] = useState({ name: '', email: '', phone: '', job_title: '', experience_years: '0', skills: '', location: '' })
+  const [candidateForm, setCandidateForm] = useState({ name: '', email: '', phone: '', job_title: '', experience_years: '0', skills: '', location: '', current_company: '', education: '', summary: '' })
   const [placementForm, setPlacementForm] = useState({ partner_id: '', candidate_name: '', candidate_email: '', candidate_phone: '', position: '', joining_date: '', ctc: '', commission_percent: '8.33' })
   const [invoiceForm, setInvoiceForm] = useState({ partner_id: '', due_date: '', items: [{ description: '', quantity: 1, rate: '', amount: '' }], gst_percent: '18', notes: '' })
   const [paymentForm, setPaymentForm] = useState({ invoice_id: '', partner_id: '', amount: '', payment_date: '', payment_mode: 'bank_transfer', reference_number: '', notes: '' })
@@ -251,6 +253,54 @@ const ConsultantPortalPage = () => {
       await loadData(consultant.id)
       alert('Candidate added to Zenrixi!')
     } catch(e) { alert('Failed: ' + e.message) }
+  }
+
+  const parseSingleResume = async (file) => {
+    setAiParsing(true)
+    setActiveModal('candidate')
+    try {
+      const text = await file.text()
+      const prompt = `Extract all candidate information from this resume. Return ONLY valid JSON with these exact fields:
+{
+  "name": "Full Name",
+  "email": "email@example.com",
+  "phone": "phone number",
+  "job_title": "current or most recent job title",
+  "experience_years": 3,
+  "location": "city, state",
+  "current_company": "current company name",
+  "skills": "skill1, skill2, skill3",
+  "education": "highest education",
+  "summary": "2 line professional summary"
+}
+Resume text:
+${text.slice(0, 3000)}`
+
+      const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_KEY}` },
+        body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: prompt }], max_tokens: 500 })
+      })
+      const aiData = await aiRes.json()
+      const raw = aiData.choices?.[0]?.message?.content || '{}'
+      const info = JSON.parse(raw.replace(/```json|```/g, '').trim())
+      setCandidateForm({
+        name: info.name || '',
+        email: info.email || '',
+        phone: info.phone || '',
+        job_title: info.job_title || '',
+        experience_years: String(info.experience_years || '0'),
+        skills: info.skills || '',
+        location: info.location || '',
+        current_company: info.current_company || '',
+        education: info.education || '',
+        summary: info.summary || ''
+      })
+      setParsedResume(file.name)
+    } catch(e) {
+      console.error('AI parse error:', e)
+    }
+    setAiParsing(false)
   }
 
   const handleResumeUpload = async (e) => {
@@ -1247,20 +1297,79 @@ ${items.map((item,i)=>`<tr><td>${i+1}</td><td>${item.description}</td><td>${item
               </div>
             )}
 
-            {/* CANDIDATE FORM */}
+            {/* CANDIDATE FORM - AI Powered */}
             {activeModal==='candidate' && (
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div><label className="text-xs font-semibold text-gray-500 block mb-1">FULL NAME*</label><input value={candidateForm.name} onChange={e=>setCandidateForm({...candidateForm,name:e.target.value})} {...stopEnter} placeholder="John Doe" className={inp()} /></div>
-                  <div><label className="text-xs font-semibold text-gray-500 block mb-1">EMAIL*</label><input type="email" value={candidateForm.email} onChange={e=>setCandidateForm({...candidateForm,email:e.target.value})} {...stopEnter} placeholder="john@email.com" className={inp()} /></div>
-                  <div><label className="text-xs font-semibold text-gray-500 block mb-1">PHONE</label><input value={candidateForm.phone} onChange={e=>setCandidateForm({...candidateForm,phone:e.target.value})} {...stopEnter} placeholder="9876543210" className={inp()} /></div>
-                  <div><label className="text-xs font-semibold text-gray-500 block mb-1">CURRENT ROLE</label><input value={candidateForm.job_title} onChange={e=>setCandidateForm({...candidateForm,job_title:e.target.value})} {...stopEnter} placeholder="Software Engineer" className={inp()} /></div>
-                  <div><label className="text-xs font-semibold text-gray-500 block mb-1">EXPERIENCE (YRS)</label><input type="number" value={candidateForm.experience_years} onChange={e=>setCandidateForm({...candidateForm,experience_years:e.target.value})} className={inp()} /></div>
-                  <div><label className="text-xs font-semibold text-gray-500 block mb-1">LOCATION</label><input value={candidateForm.location} onChange={e=>setCandidateForm({...candidateForm,location:e.target.value})} {...stopEnter} placeholder="Delhi" className={inp()} /></div>
-                  <div className="col-span-2"><label className="text-xs font-semibold text-gray-500 block mb-1">SKILLS (comma separated)</label><input value={candidateForm.skills} onChange={e=>setCandidateForm({...candidateForm,skills:e.target.value})} {...stopEnter} placeholder="React, Node.js, Python" className={inp()} /></div>
+                {/* Resume Upload for AI Parse */}
+                <div className="border-2 border-dashed border-blue-200 rounded-xl p-4 text-center bg-blue-50">
+                  <div className="text-2xl mb-1">🤖</div>
+                  <p className="text-sm font-bold text-blue-700 mb-1">Upload Resume — AI Auto Fill</p>
+                  <p className="text-xs text-blue-500 mb-2">AI will read resume and fill form automatically</p>
+                  <label className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer hover:bg-blue-700">
+                    <Upload className="w-3 h-3" />
+                    {aiParsing ? 'AI Reading Resume...' : parsedResume ? `✅ ${parsedResume}` : 'Upload Resume (PDF/TXT)'}
+                    <input type="file" accept=".txt,.pdf,.doc" className="hidden" onChange={e => e.target.files[0] && parseSingleResume(e.target.files[0])} />
+                  </label>
+                  {aiParsing && <p className="text-xs text-blue-500 mt-2 animate-pulse">🤖 AI is reading and extracting information...</p>}
                 </div>
-                <div className="bg-blue-50 rounded-xl p-3 text-xs text-blue-700">Candidate will be added to Zenrixi main database. Default password: Welcome@123</div>
-                <button onClick={addCandidate} className="w-full h-11 bg-blue-600 text-white font-bold rounded-xl">Add to Database</button>
+
+                {/* Form Fields */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 block mb-1">FULL NAME*</label>
+                    <input value={candidateForm.name} onChange={e=>setCandidateForm({...candidateForm,name:e.target.value})} {...stopEnter} placeholder="John Doe" className={inp()} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 block mb-1">EMAIL*</label>
+                    <input type="email" value={candidateForm.email} onChange={e=>setCandidateForm({...candidateForm,email:e.target.value})} {...stopEnter} placeholder="john@email.com" className={inp()} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 block mb-1">PHONE</label>
+                    <input value={candidateForm.phone} onChange={e=>setCandidateForm({...candidateForm,phone:e.target.value})} {...stopEnter} placeholder="9876543210" className={inp()} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 block mb-1">CURRENT ROLE</label>
+                    <input value={candidateForm.job_title} onChange={e=>setCandidateForm({...candidateForm,job_title:e.target.value})} {...stopEnter} placeholder="Software Engineer" className={inp()} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 block mb-1">CURRENT COMPANY</label>
+                    <input value={candidateForm.current_company} onChange={e=>setCandidateForm({...candidateForm,current_company:e.target.value})} {...stopEnter} placeholder="Company Pvt Ltd" className={inp()} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 block mb-1">EXPERIENCE (YRS)</label>
+                    <input type="number" value={candidateForm.experience_years} onChange={e=>setCandidateForm({...candidateForm,experience_years:e.target.value})} className={inp()} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 block mb-1">LOCATION</label>
+                    <input value={candidateForm.location} onChange={e=>setCandidateForm({...candidateForm,location:e.target.value})} {...stopEnter} placeholder="Delhi, India" className={inp()} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 block mb-1">EDUCATION</label>
+                    <input value={candidateForm.education} onChange={e=>setCandidateForm({...candidateForm,education:e.target.value})} {...stopEnter} placeholder="B.Tech, MBA..." className={inp()} />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs font-semibold text-gray-500 block mb-1">SKILLS (comma separated)</label>
+                    <input value={candidateForm.skills} onChange={e=>setCandidateForm({...candidateForm,skills:e.target.value})} {...stopEnter} placeholder="React, Node.js, Python, SQL" className={inp()} />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs font-semibold text-gray-500 block mb-1">PROFESSIONAL SUMMARY</label>
+                    <textarea value={candidateForm.summary} onChange={e=>setCandidateForm({...candidateForm,summary:e.target.value})} rows={2} placeholder="Brief professional summary..." className="w-full border rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 rounded-xl p-3 text-xs text-blue-700 flex items-center gap-2">
+                  ℹ️ Added to Zenrixi main database. Candidate can login with default password: <strong>Welcome@123</strong>
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => { setCandidateForm({ name:'',email:'',phone:'',job_title:'',experience_years:'0',skills:'',location:'',current_company:'',education:'',summary:'' }); setParsedResume(null) }}
+                    className="flex-1 h-11 border border-gray-200 text-gray-600 font-bold rounded-xl hover:bg-gray-50">
+                    Clear Form
+                  </button>
+                  <button onClick={addCandidate} disabled={aiParsing}
+                    className="flex-1 h-11 bg-blue-600 text-white font-bold rounded-xl disabled:opacity-60">
+                    {aiParsing ? '⏳ Processing...' : 'Add to Database'}
+                  </button>
+                </div>
               </div>
             )}
 
