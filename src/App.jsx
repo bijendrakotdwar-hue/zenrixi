@@ -6,6 +6,7 @@ import JobsPage from './pages/JobsPage'
 import CompaniesPage from './pages/CompaniesPage'
 import SignupPage from './pages/SignupPage'
 import CompanySignupPage from './pages/CompanySignupPage'
+import AdminPage from './pages/AdminPage'
 import AIAgents from './components/AIAgents'
 import AppLandingPage from './pages/AppLandingPage'
 import ConsultantPortalPage from './pages/ConsultantPortalPage'
@@ -26,6 +27,7 @@ function App() {
         <Route path="/candidate-portal" element={<CandidatePortalPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/app" element={<AppLandingPage />} />
+        <Route path="/admin-panel" element={<AdminPage />} />
         <Route path="/consultant-portal" element={<ConsultantPortalPage />} />
         <Route path="*" element={
           <div className="min-h-screen flex items-center justify-center text-center px-4">
