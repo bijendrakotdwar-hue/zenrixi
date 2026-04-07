@@ -97,8 +97,36 @@ const AdminPage = () => {
 
   const deleteRecord = async (table, id, name) => {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
-    await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, { method: 'DELETE', headers: h })
-    await loadAllData()
+    try {
+      // For consultants - delete related records first
+      if (table === 'consultants') {
+        const relatedTables = ['vacancy_matches', 'consultant_vacancies', 'interview_letters', 'followups', 'payments', 'invoices', 'placements', 'consultant_clients']
+        for (const t of relatedTables) {
+          await fetch(`${SUPABASE_URL}/rest/v1/${t}?consultant_id=eq.${id}`, { method: 'DELETE', headers: h })
+        }
+      }
+      // For companies - delete related records first
+      if (table === 'companies') {
+        const jobs = await (await fetch(`${SUPABASE_URL}/rest/v1/jobs?company_id=eq.${id}&select=id`, { headers: h })).json()
+        for (const job of jobs) {
+          await fetch(`${SUPABASE_URL}/rest/v1/matches?job_id=eq.${job.id}`, { method: 'DELETE', headers: h })
+        }
+        await fetch(`${SUPABASE_URL}/rest/v1/jobs?company_id=eq.${id}`, { method: 'DELETE', headers: h })
+      }
+      // For candidates - delete related records first  
+      if (table === 'candidates') {
+        await fetch(`${SUPABASE_URL}/rest/v1/matches?candidate_id=eq.${id}`, { method: 'DELETE', headers: h })
+      }
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, { method: 'DELETE', headers: h })
+      if (!res.ok) {
+        const err = await res.text()
+        alert('Delete failed: ' + err)
+        return
+      }
+      await loadAllData()
+    } catch(e) {
+      alert('Error: ' + e.message)
+    }
   }
 
   const toggleJobStatus = async (id, status) => {
