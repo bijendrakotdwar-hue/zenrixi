@@ -1200,8 +1200,8 @@ Location: \${candidate.location || 'N/A'}`
             <p className="text-sm font-semibold mb-2">Items</p>
             {invoiceForm.items.map((item, idx) => (
               <div key={idx} className="grid grid-cols-4 gap-2 mb-2">
-                <input placeholder="Description" value={item.description} onChange={e => { const items=[...invoiceForm.items]; items[idx].description=e.target.value; setInvoiceForm({...invoiceForm, items}) }} className="col-span-2 h-9 border rounded-lg px-3 text-xs focus:outline-none focus:ring-1 focus:ring-orange-400" />
-                <input placeholder="Rate" type="number" value={item.rate} onChange={e => { const items=[...invoiceForm.items]; items[idx].rate=e.target.value; items[idx].amount=e.target.value*items[idx].quantity; setInvoiceForm({...invoiceForm, items}) }} className="h-9 border rounded-lg px-3 text-xs focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                <input placeholder="Description" value={item.description} onChange={e => { const items=[...invoiceForm.items]; items[idx].description=e.target.value; setInvoiceForm({...invoiceForm, items}) }} className="col-span-2 h-9 border rounded-lg px-3 text-xs focus:outline-none focus:ring-1 focus:ring-orange-400" onKeyDown={e => e.key==='Enter' && e.preventDefault()} />
+                <input placeholder="Rate" type="number" value={item.rate} onChange={e => { const items=[...invoiceForm.items]; items[idx].rate=e.target.value; items[idx].amount=e.target.value*items[idx].quantity; setInvoiceForm({...invoiceForm, items}) }} className="h-9 border rounded-lg px-3 text-xs focus:outline-none focus:ring-1 focus:ring-orange-400" onKeyDown={e => e.key==='Enter' && e.preventDefault()} />
                 <input placeholder="Amount" type="number" value={item.amount} readOnly className="h-9 border rounded-lg px-3 text-xs bg-gray-50" />
               </div>
             ))}
