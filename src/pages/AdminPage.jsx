@@ -77,7 +77,7 @@ const AdminPage = () => {
         fetch(`${SUPABASE_URL}/rest/v1/placements?select=*&order=created_at.desc`, { headers: h }),
         fetch(`${SUPABASE_URL}/rest/v1/invoices?select=*&order=created_at.desc`, { headers: h }),
         fetch(`${SUPABASE_URL}/rest/v1/payments?select=*&order=created_at.desc`, { headers: h }),
-        fetch(`${SUPABASE_URL}/rest/v1/support_chats?select=*&order=created_at.desc`, { headers: h }),
+        fetch(`${SUPABASE_URL}/rest/v1/support_chats?select=*&order=created_at.desc&limit=100`, { headers: h }),
       ])
       setCandidates(await ca.json())
       setCompanies(await co.json())
@@ -89,7 +89,7 @@ const AdminPage = () => {
       setPayments(await pay.json())
       const teamRes = await fetch(`${SUPABASE_URL}/rest/v1/admin_team?select=*&order=created_at.desc`, { headers: h })
       setTeam(await teamRes.json())
-      const scRes = await fetch(`${SUPABASE_URL}/rest/v1/support_chats?select=*&order=created_at.desc`, { headers: h })
+      const scRes = await fetch(`${SUPABASE_URL}/rest/v1/support_chats?select=*&order=created_at.desc&limit=100`, { headers: h })
       setSupportChats(await scRes.json())
     } catch(e) { console.error(e) }
     finally { setLoading(false) }
