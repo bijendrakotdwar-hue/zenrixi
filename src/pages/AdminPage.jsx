@@ -25,6 +25,12 @@ const AdminPage = () => {
   const [bulkData, setBulkData] = useState([])
   const [bulkLoading, setBulkLoading] = useState(false)
   const [bulkResult, setBulkResult] = useState(null)
+  const [editingUser, setEditingUser] = useState(null)
+  const [editingType, setEditingType] = useState(null)
+  const [editForm, setEditForm] = useState({})
+  const [supportChats, setSupportChats] = useState([])
+  const [selectedSession, setSelectedSession] = useState(null)
+  const [adminReply, setAdminReply] = useState('')
 
   useEffect(() => {
     const saved = localStorage.getItem('admin_session')
@@ -57,6 +63,7 @@ const AdminPage = () => {
         fetch(`${SUPABASE_URL}/rest/v1/placements?select=*&order=created_at.desc`, { headers: h }),
         fetch(`${SUPABASE_URL}/rest/v1/invoices?select=*&order=created_at.desc`, { headers: h }),
         fetch(`${SUPABASE_URL}/rest/v1/payments?select=*&order=created_at.desc`, { headers: h }),
+        fetch(`${SUPABASE_URL}/rest/v1/support_chats?select=*&order=created_at.desc`, { headers: h }),
       ])
       setCandidates(await ca.json())
       setCompanies(await co.json())
@@ -66,6 +73,8 @@ const AdminPage = () => {
       setPlacements(await pl.json())
       setInvoices(await inv.json())
       setPayments(await pay.json())
+      const scRes = await fetch(`${SUPABASE_URL}/rest/v1/support_chats?select=*&order=created_at.desc`, { headers: h })
+      setSupportChats(await scRes.json())
     } catch(e) { console.error(e) }
     finally { setLoading(false) }
   }
@@ -172,6 +181,39 @@ const AdminPage = () => {
     await loadAllData()
   }
 
+  const updateUser = async () => {
+    if (!editingUser) return
+    const table = editingType === 'candidate' ? 'candidates' : editingType === 'company' ? 'companies' : 'consultants'
+    const updateData = {}
+    if (editingType === 'candidate') {
+      updateData.name = editForm.name
+      updateData.email = editForm.email
+      updateData.phone = editForm.phone
+      updateData.job_title = editForm.job_title
+      updateData.experience_years = parseInt(editForm.experience_years) || 0
+      if (editForm.password) updateData.password = editForm.password
+    } else if (editingType === 'company') {
+      updateData.company_name = editForm.company_name
+      updateData.email = editForm.email
+      updateData.phone = editForm.phone
+      if (editForm.password) updateData.password = editForm.password
+    } else if (editingType === 'consultant') {
+      updateData.name = editForm.name
+      updateData.email = editForm.email
+      updateData.phone = editForm.phone
+      updateData.company_name = editForm.company_name
+      if (editForm.password) updateData.password = editForm.password
+    }
+    await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${editingUser.id}`, {
+      method: 'PATCH', headers: { ...h, 'Prefer': 'return=minimal' },
+      body: JSON.stringify(updateData)
+    })
+    setEditingUser(null)
+    setEditForm({})
+    await loadAllData()
+    alert('Updated successfully!')
+  }
+
   const totalRevenue = payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0)
   const pendingInvoices = invoices.filter(i => i.status === 'unpaid')
 
@@ -246,7 +288,7 @@ const AdminPage = () => {
         {/* Mobile nav */}
         <div className="md:hidden w-full">
           <div className="flex gap-2 p-3 bg-white border-b overflow-x-auto">
-            {[['dashboard','Dashboard'],['candidates','Candidates'],['companies','Companies'],['jobs','Jobs'],['consultants','Consultants'],['invoices','Invoices'],['payments','Payments'],['bulk','Bulk Upload']].map(([id,label]) => (
+            {[['dashboard','Dashboard'],['candidates','Candidates'],['companies','Companies'],['jobs','Jobs'],['consultants','Consultants'],['invoices','Invoices'],['payments','Payments'],['bulk','Bulk Upload'],['support','Support']].map(([id,label]) => (
               <button key={id} onClick={() => setTab(id)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${tab===id?'bg-blue-600 text-white':'bg-gray-100 text-gray-600'}`}>{label}</button>
             ))}
@@ -355,10 +397,14 @@ const AdminPage = () => {
                         <td className="px-4 py-3 text-gray-500 hidden md:table-cell">{c.phone || '—'}</td>
                         <td className="px-4 py-3 hidden md:table-cell">{c.experience_years || 0} yrs</td>
                         <td className="px-4 py-3">
-                          <button onClick={() => deleteRecord('candidates', c.id, c.name)}
-                            className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-lg hover:bg-red-200 flex items-center gap-1">
-                            <Trash2 className="w-3 h-3" /> Delete
-                          </button>
+                          <div className="flex gap-2">
+                            <button onClick={() => { setEditingUser(c); setEditingType('candidate'); setEditForm({...c, password: ''}) }}
+                              className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-lg hover:bg-blue-200">✏️ Edit</button>
+                            <button onClick={() => deleteRecord('candidates', c.id, c.name)}
+                              className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-lg hover:bg-red-200 flex items-center gap-1">
+                              <Trash2 className="w-3 h-3" /> Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -389,10 +435,14 @@ const AdminPage = () => {
                         <td className="px-4 py-3 text-gray-500 hidden md:table-cell">{c.email}</td>
                         <td className="px-4 py-3 text-gray-500 hidden md:table-cell">{c.phone || '—'}</td>
                         <td className="px-4 py-3">
-                          <button onClick={() => deleteRecord('companies', c.id, c.company_name)}
-                            className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-lg hover:bg-red-200 flex items-center gap-1">
-                            <Trash2 className="w-3 h-3" /> Delete
-                          </button>
+                          <div className="flex gap-2">
+                            <button onClick={() => { setEditingUser(c); setEditingType('company'); setEditForm({...c, password: ''}) }}
+                              className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-lg hover:bg-blue-200">✏️ Edit</button>
+                            <button onClick={() => deleteRecord('companies', c.id, c.company_name)}
+                              className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-lg hover:bg-red-200 flex items-center gap-1">
+                              <Trash2 className="w-3 h-3" /> Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -453,10 +503,14 @@ const AdminPage = () => {
                         <td className="px-4 py-3 text-gray-500 hidden md:table-cell">{c.company_name || '—'}</td>
                         <td className="px-4 py-3 text-gray-500 hidden md:table-cell">{c.email}</td>
                         <td className="px-4 py-3">
-                          <button onClick={() => deleteRecord('consultants', c.id, c.name)}
-                            className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-lg hover:bg-red-200 flex items-center gap-1">
-                            <Trash2 className="w-3 h-3" /> Delete
-                          </button>
+                          <div className="flex gap-2">
+                            <button onClick={() => { setEditingUser(c); setEditingType('consultant'); setEditForm({...c, password: ''}) }}
+                              className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-lg hover:bg-blue-200">✏️ Edit</button>
+                            <button onClick={() => deleteRecord('consultants', c.id, c.name)}
+                              className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-lg hover:bg-red-200 flex items-center gap-1">
+                              <Trash2 className="w-3 h-3" /> Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -587,6 +641,118 @@ const AdminPage = () => {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+        {/* SUPPORT INBOX */}
+          {tab === 'support' && (
+            <div>
+              <h2 className="text-2xl font-black mb-2">Support Inbox</h2>
+              <p className="text-gray-500 text-sm mb-6">All user conversations from Zeni Support chatbot</p>
+
+              {supportChats.length === 0 ? (
+                <div className="bg-white rounded-2xl border p-12 text-center">
+                  <div className="text-5xl mb-3">💬</div>
+                  <p className="text-gray-500">No support conversations yet.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  {/* Sessions list */}
+                  <div className="bg-white rounded-2xl border overflow-hidden">
+                    <div className="p-4 border-b bg-gray-50">
+                      <h3 className="font-bold text-sm">Conversations ({[...new Set(supportChats.map(c => c.session_id))].length})</h3>
+                    </div>
+                    <div className="overflow-y-auto max-h-[500px]">
+                      {[...new Set(supportChats.map(c => c.session_id))].map(sessionId => {
+                        const sessionChats = supportChats.filter(c => c.session_id === sessionId)
+                        const latest = sessionChats[0]
+                        const hasOpen = sessionChats.some(c => c.status === 'open')
+                        return (
+                          <div key={sessionId} onClick={() => setSelectedSession(sessionId)}
+                            className={`p-4 border-b cursor-pointer hover:bg-gray-50 transition-colors \${selectedSession === sessionId ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}`}>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-mono text-gray-400">{sessionId.slice(0,15)}...</span>
+                              {hasOpen && <span className="w-2 h-2 bg-red-500 rounded-full"></span>}
+                            </div>
+                            <p className="text-sm text-gray-700 truncate">{latest?.message}</p>
+                            <p className="text-xs text-gray-400 mt-1">{new Date(latest?.created_at).toLocaleString('en-IN')}</p>
+                            <span className={`text-xs px-2 py-0.5 rounded-full \${hasOpen ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                              {hasOpen ? 'Open' : 'Resolved'}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Chat detail */}
+                  <div className="md:col-span-2 bg-white rounded-2xl border overflow-hidden">
+                    {selectedSession ? (
+                      <>
+                        <div className="p-4 border-b bg-gray-50 flex items-center justify-between">
+                          <h3 className="font-bold text-sm">Conversation Detail</h3>
+                          <div className="flex gap-2">
+                            <button onClick={async () => {
+                              const sessionMsgs = supportChats.filter(c => c.session_id === selectedSession)
+                              for (const msg of sessionMsgs) {
+                                await fetch(`${SUPABASE_URL}/rest/v1/support_chats?id=eq.\${msg.id}`, {
+                                  method: 'PATCH', headers: { ...h, 'Prefer': 'return=minimal' },
+                                  body: JSON.stringify({ status: 'resolved' })
+                                })
+                              }
+                              await loadAllData()
+                            }} className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-lg hover:bg-green-200">
+                              ✓ Mark Resolved
+                            </button>
+                            <button onClick={async () => {
+                              if (!confirm('Delete this conversation?')) return
+                              const sessionMsgs = supportChats.filter(c => c.session_id === selectedSession)
+                              for (const msg of sessionMsgs) {
+                                await fetch(`${SUPABASE_URL}/rest/v1/support_chats?id=eq.\${msg.id}`, {
+                                  method: 'DELETE', headers: h
+                                })
+                              }
+                              setSelectedSession(null)
+                              await loadAllData()
+                            }} className="text-xs bg-red-100 text-red-600 px-3 py-1 rounded-lg hover:bg-red-200">
+                              🗑 Delete
+                            </button>
+                          </div>
+                        </div>
+                        <div className="p-4 overflow-y-auto max-h-[400px] space-y-4">
+                          {supportChats.filter(c => c.session_id === selectedSession).reverse().map(chat => (
+                            <div key={chat.id} className="space-y-2">
+                              {/* User message */}
+                              <div className="flex justify-end">
+                                <div className="bg-blue-600 text-white text-sm px-4 py-2 rounded-2xl rounded-br-sm max-w-xs">
+                                  {chat.message}
+                                </div>
+                              </div>
+                              {/* AI Reply */}
+                              {chat.reply && (
+                                <div className="flex justify-start gap-2">
+                                  <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center text-sm shrink-0">🤖</div>
+                                  <div className="bg-gray-100 text-gray-800 text-sm px-4 py-2 rounded-2xl rounded-bl-sm max-w-xs">
+                                    {chat.reply}
+                                  </div>
+                                </div>
+                              )}
+                              <p className="text-xs text-gray-400 text-center">{new Date(chat.created_at).toLocaleString('en-IN')}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex items-center justify-center h-full min-h-[300px] text-gray-400">
+                        <div className="text-center">
+                          <div className="text-4xl mb-2">💬</div>
+                          <p className="text-sm">Select a conversation to view</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

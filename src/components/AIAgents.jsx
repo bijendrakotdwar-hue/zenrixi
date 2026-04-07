@@ -1,6 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react'
 
 const OPENAI_KEY = import.meta.env.VITE_OPENAI_KEY
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://nurlnqzmiyryfviuujsq.supabase.co'
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY || 'sb_publishable_WTdQ9aVR43R1weeWFHgTBQ_CdUkjR09'
+const SB_H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' }
+const SESSION_ID = `session_${Date.now()}_${Math.random().toString(36).slice(2)}`
 
 // ── SUPPORT AGENT ──────────────────────────────────────────
 const SUPPORT_SYSTEM = `You are Zeni, a friendly AI support assistant for Zenrixi — India's AI-powered job matching platform.
@@ -76,6 +80,18 @@ const ChatWindow = ({ title, emoji, systemPrompt, placeholder, color, onClose })
       const data = await res.json()
       const reply = data.choices?.[0]?.message?.content || 'Sorry, something went wrong.'
       setMessages(prev => [...prev, { role: 'assistant', content: reply }])
+      // Save to Supabase support_chats
+      try {
+        await fetch(`${SUPABASE_URL}/rest/v1/support_chats`, {
+          method: 'POST', headers: { ...SB_H, 'Prefer': 'return=minimal' },
+          body: JSON.stringify({
+            session_id: SESSION_ID,
+            message: input,
+            reply: reply,
+            status: 'open'
+          })
+        })
+      } catch(e) { console.log('Save chat error:', e) }
     } catch(e) {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Error connecting. Please try again.' }])
     }
