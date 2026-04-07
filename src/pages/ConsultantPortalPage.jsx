@@ -17,6 +17,9 @@ const ConsultantPortalPage = () => {
   const [otpInput, setOtpInput] = useState('')
   const [pendingReg, setPendingReg] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [candidateFilter, setCandidateFilter] = useState('all')
+  const [candidateStatuses, setCandidateStatuses] = useState({})
+  const [allDbCandidates, setAllDbCandidates] = useState([])
 
   // Data
   const [partners, setPartners] = useState([])
@@ -59,7 +62,7 @@ const ConsultantPortalPage = () => {
       const [pa, co, ca, pl, inv, pay, fu, il, vac, jobs] = await Promise.all([
         fetch(`${SUPABASE_URL}/rest/v1/consultant_partners?consultant_id=eq.${cid}&order=created_at.desc`, { headers: h }),
         fetch(`${SUPABASE_URL}/rest/v1/consultant_contacts?consultant_id=eq.${cid}&order=created_at.desc`, { headers: h }),
-        fetch(`${SUPABASE_URL}/rest/v1/candidates?added_by_consultant=eq.${cid}&order=created_at.desc`, { headers: h }),
+        fetch(`${SUPABASE_URL}/rest/v1/candidates?select=*&order=created_at.desc`, { headers: h }),
         fetch(`${SUPABASE_URL}/rest/v1/placements?consultant_id=eq.${cid}&order=created_at.desc`, { headers: h }),
         fetch(`${SUPABASE_URL}/rest/v1/invoices?consultant_id=eq.${cid}&order=created_at.desc`, { headers: h }),
         fetch(`${SUPABASE_URL}/rest/v1/payments?consultant_id=eq.${cid}&order=created_at.desc`, { headers: h }),
@@ -68,7 +71,16 @@ const ConsultantPortalPage = () => {
         fetch(`${SUPABASE_URL}/rest/v1/consultant_vacancies?consultant_id=eq.${cid}&order=created_at.desc`, { headers: h }),
         fetch(`${SUPABASE_URL}/rest/v1/jobs?posted_by_consultant=eq.${cid}&order=created_at.desc`, { headers: h }),
       ])
-      setPartners(await pa.json()); setContacts(await co.json()); setCandidates(await ca.json())
+      const candData = await ca.json()
+      setAllDbCandidates(Array.isArray(candData) ? candData : [])
+      setCandidates(Array.isArray(candData) ? candData.filter(c => c.added_by_consultant === cid) : [])
+      // Load candidate statuses
+      const statusRes = await fetch(`${SUPABASE_URL}/rest/v1/consultant_candidate_status?consultant_id=eq.${cid}&select=*`, { headers: h })
+      const statusData = await statusRes.json()
+      const statusMap = {}
+      if (Array.isArray(statusData)) statusData.forEach(s => { statusMap[s.candidate_id] = s })
+      setCandidateStatuses(statusMap)
+      setPartners(await pa.json()); setContacts(await co.json())
       setPlacements(await pl.json()); setInvoices(await inv.json()); setPayments(await pay.json())
       setFollowups(await fu.json()); setInterviewLetters(await il.json()); setVacancies(await vac.json())
       setConsultantJobs(await jobs.json())
@@ -276,6 +288,25 @@ Resume: ${text.slice(0, 2000)}`
     await loadData(consultant.id)
     alert(`${imported} candidates imported from resumes!`)
   }
+
+  const updateCandidateStatus = async (candidateId, status) => {
+    const existing = candidateStatuses[candidateId]
+    if (existing) {
+      await fetch(`${SUPABASE_URL}/rest/v1/consultant_candidate_status?id=eq.${existing.id}`, {
+        method: 'PATCH', headers: { ...h, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ status })
+      })
+    } else {
+      await fetch(`${SUPABASE_URL}/rest/v1/consultant_candidate_status`, {
+        method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ consultant_id: consultant.id, candidate_id: candidateId, status })
+      })
+    }
+    setCandidateStatuses(prev => ({ ...prev, [candidateId]: { ...prev[candidateId], status, candidate_id: candidateId } }))
+  }
+
+
+
 
   const generateInterviewLetter = async () => {
     if (!letterForm.candidate_name || !letterForm.position || !letterForm.interview_date) { alert('Fill required fields'); return }
@@ -726,49 +757,137 @@ ${items.map((item,i)=>`<tr><td>${i+1}</td><td>${item.description}</td><td>${item
           {/* CANDIDATES */}
           {tab==='candidates' && (
             <div>
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-xl font-black">Candidate Database ({candidates.length})</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-black">Candidate Database ({allDbCandidates.length})</h2>
                 <div className="flex gap-2">
                   <label className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 cursor-pointer hover:bg-indigo-700">
                     <Upload className="w-4 h-4" /> Upload Resumes
                     <input type="file" multiple accept=".txt,.pdf" className="hidden" onChange={handleResumeUpload} />
                   </label>
                   <button onClick={() => setActiveModal('candidate')} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-blue-700">
-                    <Plus className="w-4 h-4" /> Add Manually
+                    <Plus className="w-4 h-4" /> Add
                   </button>
                 </div>
               </div>
-              {candidates.length === 0 ? (
-                <div className="bg-white rounded-2xl border p-12 text-center">
-                  <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500">No candidates yet. Upload resumes or add manually.</p>
+
+              {/* Search + Filter */}
+              <div className="bg-white rounded-2xl border p-4 mb-4 space-y-3">
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+                  <input
+                    placeholder="Search by name, email, skills, location..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    onKeyDown={e => e.key==='Enter' && e.preventDefault()}
+                    className="w-full h-10 border rounded-xl pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {candidates.map(c => (
-                    <div key={c.id} className="bg-white rounded-2xl border p-4 flex items-center justify-between hover:shadow-sm">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center font-bold text-blue-700">{c.name?.charAt(0)}</div>
-                        <div>
-                          <h4 className="font-bold text-sm text-gray-900">{c.name}</h4>
-                          <p className="text-xs text-gray-500">{c.job_title} • {c.experience_years}yr • {c.email}</p>
-                          {Array.isArray(c.parsed_skills) && c.parsed_skills.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {c.parsed_skills.slice(0,4).map((s,i) => <span key={i} className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full">{s}</span>)}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => { setLetterForm({...letterForm, candidate_name: c.name, candidate_email: c.email}); setActiveModal('letter') }}
-                          className="text-xs bg-orange-50 text-orange-700 px-2 py-1.5 rounded-lg hover:bg-orange-100">📋 Letter</button>
-                        {c.phone && <a href={`tel:${c.phone}`} className="text-xs bg-green-50 text-green-700 px-2 py-1.5 rounded-lg hover:bg-green-100">📞</a>}
-                        <a href={`mailto:${c.email}`} className="text-xs bg-blue-50 text-blue-700 px-2 py-1.5 rounded-lg hover:bg-blue-100">✉️</a>
-                      </div>
-                    </div>
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { id: 'all', label: `All (${allDbCandidates.length})`, color: 'bg-gray-600' },
+                    { id: 'favourite', label: `⭐ Favourite (${Object.values(candidateStatuses).filter(s=>s.status==='favourite').length})`, color: 'bg-yellow-500' },
+                    { id: 'shortlisted', label: `✅ Shortlisted (${Object.values(candidateStatuses).filter(s=>s.status==='shortlisted').length})`, color: 'bg-green-600' },
+                    { id: 'hold', label: `⏸ On Hold (${Object.values(candidateStatuses).filter(s=>s.status==='hold').length})`, color: 'bg-orange-500' },
+                    { id: 'rejected', label: `❌ Rejected (${Object.values(candidateStatuses).filter(s=>s.status==='rejected').length})`, color: 'bg-red-500' },
+                    { id: 'mine', label: `👤 Added by Me (${candidates.length})`, color: 'bg-blue-600' },
+                  ].map(f => (
+                    <button key={f.id} onClick={() => setCandidateFilter(f.id)}
+                      className={`text-xs px-3 py-1.5 rounded-full font-medium transition-all ${candidateFilter===f.id?`${f.color} text-white`:'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                      {f.label}
+                    </button>
                   ))}
                 </div>
-              )}
+              </div>
+
+              {/* Candidates list */}
+              {(() => {
+                let filtered = allDbCandidates
+                if (candidateFilter === 'mine') filtered = filtered.filter(c => c.added_by_consultant === consultant?.id)
+                else if (['favourite','shortlisted','hold','rejected'].includes(candidateFilter)) {
+                  const ids = Object.entries(candidateStatuses).filter(([,s]) => s.status === candidateFilter).map(([id]) => id)
+                  filtered = filtered.filter(c => ids.includes(c.id))
+                }
+                if (searchQuery.trim()) {
+                  const q = searchQuery.toLowerCase()
+                  filtered = filtered.filter(c =>
+                    c.name?.toLowerCase().includes(q) ||
+                    c.email?.toLowerCase().includes(q) ||
+                    c.job_title?.toLowerCase().includes(q) ||
+                    c.location?.toLowerCase().includes(q) ||
+                    (Array.isArray(c.parsed_skills) && c.parsed_skills.some(s => s.toLowerCase().includes(q)))
+                  )
+                }
+                if (filtered.length === 0) return (
+                  <div className="bg-white rounded-2xl border p-12 text-center">
+                    <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500">No candidates found.</p>
+                  </div>
+                )
+                return (
+                  <div className="space-y-3">
+                    {filtered.map(c => {
+                      const status = candidateStatuses[c.id]?.status || 'none'
+                      const statusColors = { favourite: 'bg-yellow-100 text-yellow-700', shortlisted: 'bg-green-100 text-green-700', hold: 'bg-orange-100 text-orange-700', rejected: 'bg-red-100 text-red-600', none: 'bg-gray-100 text-gray-500' }
+                      const statusLabels = { favourite: '⭐ Favourite', shortlisted: '✅ Shortlisted', hold: '⏸ On Hold', rejected: '❌ Rejected', none: 'Set Status' }
+                      return (
+                        <div key={c.id} className="bg-white rounded-2xl border p-4 hover:shadow-md transition-all">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center font-bold text-white text-lg shrink-0">
+                                {c.name?.charAt(0)?.toUpperCase()}
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-gray-900">{c.name}</h4>
+                                <p className="text-xs text-gray-500">{c.job_title} • {c.experience_years}yr exp</p>
+                                <p className="text-xs text-gray-400">{c.email} {c.phone ? `• ${c.phone}` : ''}</p>
+                                {c.location && <p className="text-xs text-gray-400 flex items-center gap-1"><MapPin className="w-3 h-3" />{c.location}</p>}
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-2">
+                              <select value={status} onChange={e => updateCandidateStatus(c.id, e.target.value)}
+                                className={`text-xs px-2 py-1 rounded-full font-medium border-0 cursor-pointer ${statusColors[status]} focus:outline-none`}>
+                                <option value="none">Set Status</option>
+                                <option value="favourite">⭐ Favourite</option>
+                                <option value="shortlisted">✅ Shortlisted</option>
+                                <option value="hold">⏸ On Hold</option>
+                                <option value="rejected">❌ Rejected</option>
+                              </select>
+                              {c.added_by_consultant === consultant?.id && (
+                                <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">Added by me</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Skills */}
+                          {Array.isArray(c.parsed_skills) && c.parsed_skills.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mb-3">
+                              {c.parsed_skills.slice(0,6).map((s,i) => <span key={i} className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">{s}</span>)}
+                              {c.parsed_skills.length > 6 && <span className="text-xs text-gray-400">+{c.parsed_skills.length-6} more</span>}
+                            </div>
+                          )}
+
+                          {/* Actions */}
+                          <div className="flex gap-2 flex-wrap">
+                            <button onClick={() => { setLetterForm({...letterForm, candidate_name: c.name, candidate_email: c.email}); setActiveModal('letter') }}
+                              className="text-xs bg-orange-50 text-orange-700 px-3 py-1.5 rounded-lg hover:bg-orange-100 flex items-center gap-1">
+                              📋 Interview Letter
+                            </button>
+                            {c.email && <a href={`mailto:${c.email}`} className="text-xs bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg hover:bg-blue-100">✉️ Email</a>}
+                            {c.phone && <a href={`tel:${c.phone}`} className="text-xs bg-green-50 text-green-700 px-3 py-1.5 rounded-lg hover:bg-green-100">📞 Call</a>}
+                            {c.phone && <a href={`https://wa.me/${c.phone}`} target="_blank" rel="noreferrer" className="text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg hover:bg-emerald-100">💬 WhatsApp</a>}
+                            {c.resume_url && (
+                              <a href={c.resume_url} target="_blank" rel="noreferrer" className="text-xs bg-purple-50 text-purple-700 px-3 py-1.5 rounded-lg hover:bg-purple-100 flex items-center gap-1">
+                                <Download className="w-3 h-3" /> Resume
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                    <p className="text-xs text-gray-400 text-center pt-2">Showing {filtered.length} of {allDbCandidates.length} candidates</p>
+                  </div>
+                )
+              })()}
             </div>
           )}
 
