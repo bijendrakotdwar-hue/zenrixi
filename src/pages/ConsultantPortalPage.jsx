@@ -22,6 +22,8 @@ const ConsultantPortalPage = () => {
   const [allDbCandidates, setAllDbCandidates] = useState([])
   const [aiParsing, setAiParsing] = useState(false)
   const [parsedResume, setParsedResume] = useState(null)
+  const [bulkUploading, setBulkUploading] = useState(false)
+  const [bulkProgress, setBulkProgress] = useState({ total: 0, done: 0, success: 0, failed: 0 })
 
   // Data
   const [partners, setPartners] = useState([])
@@ -255,35 +257,39 @@ const ConsultantPortalPage = () => {
     } catch(e) { alert('Failed: ' + e.message) }
   }
 
+  const extractTextFromFile = async (file) => {
+    // For PDF files - read as text (basic extraction)
+    if (file.type === 'application/pdf') {
+      return new Promise((resolve) => {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          const text = e.target.result
+          // Extract readable text from PDF binary
+          const decoded = text.replace(/[^\x20-\x7E]/g, ' ').replace(/\s+/g, ' ')
+
+          resolve(decoded)
+        }
+        reader.readAsText(file, 'utf-8')
+      })
+    }
+    return file.text()
+  }
+
+  const parseResumeWithAPI = async (text) => {
+    const res = await fetch('/api/parse-resume', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    })
+    return res.json()
+  }
+
   const parseSingleResume = async (file) => {
     setAiParsing(true)
     setActiveModal('candidate')
     try {
-      const text = await file.text()
-      const prompt = `Extract all candidate information from this resume. Return ONLY valid JSON with these exact fields:
-{
-  "name": "Full Name",
-  "email": "email@example.com",
-  "phone": "phone number",
-  "job_title": "current or most recent job title",
-  "experience_years": 3,
-  "location": "city, state",
-  "current_company": "current company name",
-  "skills": "skill1, skill2, skill3",
-  "education": "highest education",
-  "summary": "2 line professional summary"
-}
-Resume text:
-${text.slice(0, 3000)}`
-
-      const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_KEY}` },
-        body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: prompt }], max_tokens: 500 })
-      })
-      const aiData = await aiRes.json()
-      const raw = aiData.choices?.[0]?.message?.content || '{}'
-      const info = JSON.parse(raw.replace(/```json|```/g, '').trim())
+      const text = await extractTextFromFile(file)
+      const info = await parseResumeWithAPI(text)
       setCandidateForm({
         name: info.name || '',
         email: info.email || '',
@@ -306,37 +312,35 @@ ${text.slice(0, 3000)}`
   const handleResumeUpload = async (e) => {
     const files = Array.from(e.target.files)
     if (!files.length) return
-    let imported = 0
+    setBulkUploading(true)
+    setBulkProgress({ total: files.length, done: 0, success: 0, failed: 0 })
+    let success = 0, failed = 0
     for (const file of files) {
-      const text = await file.text().catch(() => '')
-      if (!text) continue
       try {
-        const prompt = `Extract candidate info from this resume text. Return ONLY valid JSON:
-{"name":"","email":"","phone":"","job_title":"","experience_years":0,"skills":[],"location":""}
-Resume: ${text.slice(0, 2000)}`
-        const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_KEY}` },
-          body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: prompt }], max_tokens: 300 })
-        })
-        const aiData = await aiRes.json()
-        const raw = aiData.choices?.[0]?.message?.content || '{}'
-        const info = JSON.parse(raw.replace(/```json|```/g, '').trim())
+        const text = await extractTextFromFile(file)
+        if (!text.trim()) { failed++; setBulkProgress(p => ({...p, done: p.done+1, failed: p.failed+1})); continue }
+        const info = await parseResumeWithAPI(text)
         if (info.email) {
           const check = await fetch(`${SUPABASE_URL}/rest/v1/candidates?email=eq.${encodeURIComponent(info.email)}&select=id`, { headers: h })
           const ex = await check.json()
           if (!ex.length) {
+            const skillsArray = typeof info.skills === 'string' ? info.skills.split(',').map(s=>s.trim()) : (info.skills || [])
             await fetch(`${SUPABASE_URL}/rest/v1/candidates`, {
               method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' },
-              body: JSON.stringify({ ...info, password: 'Welcome@123', added_by_consultant: consultant.id })
+              body: JSON.stringify({ name: info.name, email: info.email, phone: info.phone, job_title: info.job_title, experience_years: parseInt(info.experience_years)||0, location: info.location, parsed_skills: skillsArray, password: 'Welcome@123', added_by_consultant: consultant.id, source: 'bulk_resume_upload' })
             })
-            imported++
-          }
-        }
-      } catch(e) { console.error(e) }
+            success++
+          } else { failed++ }
+        } else { failed++ }
+      } catch(e) { failed++; console.error(e) }
+      setBulkProgress(p => ({...p, done: p.done+1, success: p.done < p.total ? success : success, failed: p.done < p.total ? failed : failed}))
+      await new Promise(r => setTimeout(r, 300))
     }
+    setBulkProgress({ total: files.length, done: files.length, success, failed })
     await loadData(consultant.id)
-    alert(`${imported} candidates imported from resumes!`)
+    setBulkUploading(false)
+    alert(`✅ ${success} candidates imported!
+❌ ${failed} failed/skipped (duplicate or no email)`)
   }
 
   const updateCandidateStatus = async (candidateId, status) => {
@@ -810,15 +814,33 @@ ${items.map((item,i)=>`<tr><td>${i+1}</td><td>${item.description}</td><td>${item
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-black">Candidate Database ({allDbCandidates.length})</h2>
                 <div className="flex gap-2">
-                  <label className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 cursor-pointer hover:bg-indigo-700">
-                    <Upload className="w-4 h-4" /> Upload Resumes
-                    <input type="file" multiple accept=".txt,.pdf" className="hidden" onChange={handleResumeUpload} />
+                  <label className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 cursor-pointer ${bulkUploading?'bg-gray-400 cursor-not-allowed':'bg-indigo-600 hover:bg-indigo-700'} text-white`}>
+                    <Upload className="w-4 h-4" /> 
+                    {bulkUploading ? `⏳ ${bulkProgress.done}/${bulkProgress.total}` : 'Bulk Upload Resumes'}
+                    <input type="file" multiple accept=".txt,.pdf,.doc,.docx" className="hidden" onChange={handleResumeUpload} disabled={bulkUploading} />
                   </label>
                   <button onClick={() => setActiveModal('candidate')} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-blue-700">
                     <Plus className="w-4 h-4" /> Add
                   </button>
                 </div>
               </div>
+
+              {/* Bulk upload progress */}
+              {bulkUploading && (
+                <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-bold text-indigo-700">🤖 AI Processing Resumes...</p>
+                    <p className="text-xs text-indigo-600">{bulkProgress.done}/{bulkProgress.total}</p>
+                  </div>
+                  <div className="w-full bg-indigo-200 rounded-full h-2 mb-2">
+                    <div className="bg-indigo-600 h-2 rounded-full transition-all" style={{width: `${bulkProgress.total ? (bulkProgress.done/bulkProgress.total)*100 : 0}%`}} />
+                  </div>
+                  <div className="flex gap-4 text-xs">
+                    <span className="text-green-600">✅ {bulkProgress.success} imported</span>
+                    <span className="text-red-500">❌ {bulkProgress.failed} failed</span>
+                  </div>
+                </div>
+              )}
 
               {/* Search + Filter */}
               <div className="bg-white rounded-2xl border p-4 mb-4 space-y-3">
