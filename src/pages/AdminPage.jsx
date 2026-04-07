@@ -21,6 +21,10 @@ const AdminPage = () => {
   const [placements, setPlacements] = useState([])
   const [invoices, setInvoices] = useState([])
   const [payments, setPayments] = useState([])
+  const [bulkTab, setBulkTab] = useState('candidate')
+  const [bulkData, setBulkData] = useState([])
+  const [bulkLoading, setBulkLoading] = useState(false)
+  const [bulkResult, setBulkResult] = useState(null)
 
   useEffect(() => {
     const saved = localStorage.getItem('admin_session')
@@ -77,6 +81,94 @@ const AdminPage = () => {
       method: 'PATCH', headers: { ...h, 'Prefer': 'return=minimal' },
       body: JSON.stringify({ status: status === 'active' ? 'inactive' : 'active' })
     })
+    await loadAllData()
+  }
+
+  const parseCSV = (text) => {
+    const lines = text.trim().split('\n')
+    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''))
+    return lines.slice(1).map(line => {
+      const vals = []
+      let inQuotes = false
+      let val = ''
+      for (let ch of line) {
+        if (ch === '"') { inQuotes = !inQuotes }
+        else if (ch === ',' && !inQuotes) { vals.push(val.trim()); val = '' }
+        else { val += ch }
+      }
+      vals.push(val.trim())
+      const obj = {}
+      headers.forEach((h, i) => { obj[h] = vals[i] || '' })
+      return obj
+    }).filter(row => Object.values(row).some(v => v))
+  }
+
+  const handleCSVUpload = (e, type) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const parsed = parseCSV(ev.target.result)
+      setBulkData(parsed)
+      setBulkResult(null)
+    }
+    reader.readAsText(file)
+  }
+
+  const uploadBulkCandidates = async () => {
+    if (!bulkData.length) { alert('No data to upload'); return }
+    setBulkLoading(true)
+    let success = 0, failed = 0, skipped = 0
+    for (const row of bulkData) {
+      try {
+        if (!row.name || !row.email) { failed++; continue }
+        const check = await fetch(`${SUPABASE_URL}/rest/v1/candidates?email=eq.${encodeURIComponent(row.email)}&select=id`, { headers: h })
+        const existing = await check.json()
+        if (existing.length > 0) { skipped++; continue }
+        const skills = row.skills ? row.skills.split(',').map(s => s.trim()) : []
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/candidates`, {
+          method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' },
+          body: JSON.stringify({
+            name: row.name, email: row.email, phone: row.phone || null,
+            job_title: row.job_title || null, experience_years: parseInt(row.experience_years) || 0,
+            parsed_skills: skills, location: row.location || null,
+            password: row.password || 'Welcome@123', source: 'bulk_import'
+          })
+        })
+        if (res.ok) success++; else failed++
+      } catch { failed++ }
+    }
+    setBulkResult({ success, failed, skipped })
+    setBulkLoading(false)
+    setBulkData([])
+    await loadAllData()
+  }
+
+  const uploadBulkCompanies = async () => {
+    if (!bulkData.length) { alert('No data to upload'); return }
+    setBulkLoading(true)
+    let success = 0, failed = 0, skipped = 0
+    for (const row of bulkData) {
+      try {
+        if (!row.company_name || !row.email) { failed++; continue }
+        const check = await fetch(`${SUPABASE_URL}/rest/v1/companies?email=eq.${encodeURIComponent(row.email)}&select=id`, { headers: h })
+        const existing = await check.json()
+        if (existing.length > 0) { skipped++; continue }
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/companies`, {
+          method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' },
+          body: JSON.stringify({
+            company_name: row.company_name, email: row.email,
+            phone: row.phone || null, industry: row.industry || null,
+            location: row.location || null, website: row.website || null,
+            password: row.password || 'Company@123', source: 'bulk_import'
+          })
+        })
+        if (res.ok) success++; else failed++
+      } catch { failed++ }
+    }
+    setBulkResult({ success, failed, skipped })
+    setBulkLoading(false)
+    setBulkData([])
     await loadAllData()
   }
 
@@ -154,7 +246,7 @@ const AdminPage = () => {
         {/* Mobile nav */}
         <div className="md:hidden w-full">
           <div className="flex gap-2 p-3 bg-white border-b overflow-x-auto">
-            {[['dashboard','Dashboard'],['candidates','Candidates'],['companies','Companies'],['jobs','Jobs'],['consultants','Consultants'],['invoices','Invoices'],['payments','Payments']].map(([id,label]) => (
+            {[['dashboard','Dashboard'],['candidates','Candidates'],['companies','Companies'],['jobs','Jobs'],['consultants','Consultants'],['invoices','Invoices'],['payments','Payments'],['bulk','Bulk Upload']].map(([id,label]) => (
               <button key={id} onClick={() => setTab(id)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${tab===id?'bg-blue-600 text-white':'bg-gray-100 text-gray-600'}`}>{label}</button>
             ))}
@@ -495,6 +587,99 @@ const AdminPage = () => {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+        {/* BULK UPLOAD */}
+          {tab === 'bulk' && (
+            <div className="max-w-3xl">
+              <h2 className="text-2xl font-black mb-2">Bulk Upload</h2>
+              <p className="text-gray-500 text-sm mb-6">Upload candidates or companies via CSV file</p>
+
+              {/* Tab selector */}
+              <div className="flex gap-3 mb-6">
+                <button onClick={() => { setBulkTab('candidate'); setBulkData([]); setBulkResult(null) }}
+                  className={`px-5 py-2 rounded-xl font-bold text-sm \${bulkTab==='candidate'?'bg-blue-600 text-white':'bg-gray-100 text-gray-600'}`}>
+                  👤 Candidates
+                </button>
+                <button onClick={() => { setBulkTab('company'); setBulkData([]); setBulkResult(null) }}
+                  className={`px-5 py-2 rounded-xl font-bold text-sm \${bulkTab==='company'?'bg-green-600 text-white':'bg-gray-100 text-gray-600'}`}>
+                  🏢 Companies
+                </button>
+              </div>
+
+              {/* Download template */}
+              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 mb-5">
+                <h3 className="font-bold text-blue-800 mb-2">📥 Step 1: Download Template</h3>
+                <p className="text-sm text-blue-600 mb-3">Download the CSV template, fill in the data, and upload below.</p>
+                <a href={bulkTab === 'candidate' ? '/candidate_template.csv' : '/company_template.csv'}
+                  download className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-blue-700">
+                  ⬇️ Download {bulkTab === 'candidate' ? 'Candidate' : 'Company'} Template
+                </a>
+              </div>
+
+              {/* Upload CSV */}
+              <div className="bg-white border-2 border-dashed border-gray-200 rounded-2xl p-8 mb-5 text-center">
+                <h3 className="font-bold mb-2">📤 Step 2: Upload CSV File</h3>
+                <p className="text-sm text-gray-500 mb-4">Select your filled CSV file</p>
+                <input type="file" accept=".csv" onChange={e => handleCSVUpload(e, bulkTab)}
+                  className="block mx-auto text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+              </div>
+
+              {/* Preview */}
+              {bulkData.length > 0 && (
+                <div className="bg-white rounded-2xl border p-5 mb-5">
+                  <h3 className="font-bold mb-3">👀 Preview ({bulkData.length} records)</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          {Object.keys(bulkData[0]).map(key => (
+                            <th key={key} className="text-left px-3 py-2 border text-gray-600 font-semibold">{key}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bulkData.slice(0,5).map((row, i) => (
+                          <tr key={i} className="hover:bg-gray-50">
+                            {Object.values(row).map((val, j) => (
+                              <td key={j} className="px-3 py-2 border text-gray-700">{val}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {bulkData.length > 5 && <p className="text-xs text-gray-400 mt-2">...and {bulkData.length - 5} more records</p>}
+                  </div>
+
+                  <button onClick={bulkTab === 'candidate' ? uploadBulkCandidates : uploadBulkCompanies}
+                    disabled={bulkLoading}
+                    className={`mt-4 w-full h-11 font-bold text-white rounded-xl disabled:opacity-60 \${bulkTab==='candidate'?'bg-blue-600 hover:bg-blue-700':'bg-green-600 hover:bg-green-700'}`}>
+                    {bulkLoading ? '⏳ Uploading...' : `🚀 Upload ${bulkData.length} ${bulkTab === 'candidate' ? 'Candidates' : 'Companies'}`}
+                  </button>
+                </div>
+              )}
+
+              {/* Result */}
+              {bulkResult && (
+                <div className="bg-white rounded-2xl border p-5">
+                  <h3 className="font-bold mb-3">✅ Upload Complete!</h3>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-green-50 rounded-xl p-3 text-center">
+                      <p className="text-2xl font-black text-green-600">{bulkResult.success}</p>
+                      <p className="text-xs text-green-700">Uploaded</p>
+                    </div>
+                    <div className="bg-yellow-50 rounded-xl p-3 text-center">
+                      <p className="text-2xl font-black text-yellow-600">{bulkResult.skipped}</p>
+                      <p className="text-xs text-yellow-700">Skipped (duplicate)</p>
+                    </div>
+                    <div className="bg-red-50 rounded-xl p-3 text-center">
+                      <p className="text-2xl font-black text-red-600">{bulkResult.failed}</p>
+                      <p className="text-xs text-red-700">Failed</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

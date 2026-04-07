@@ -1,0 +1,3 @@
+name,email,phone,job_title,experience_years,skills,location
+John Doe,john@example.com,9876543210,Software Engineer,3,"React,Node.js,JavaScript",Delhi
+Jane Smith,jane@example.com,9876543211,Data Analyst,2,"Python,SQL,Excel",Mumbai
