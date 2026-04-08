@@ -375,6 +375,7 @@ const AdminPage = () => {
         <aside className="w-56 bg-white border-r hidden md:flex flex-col p-4 gap-1 sticky top-[64px] h-[calc(100vh-64px)]">
           {[
             ['dashboard', 'Dashboard', TrendingUp],
+            ['analytics', 'Analytics', TrendingUp],
             ['candidates', `Candidates (${candidates.length})`, Users],
             ['companies', `Companies (${companies.length})`, Building2],
             ['jobs', `Jobs (${jobs.length})`, Briefcase],
