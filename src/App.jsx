@@ -1,4 +1,6 @@
-import React from 'react'
+import { createClient } from '@supabase/supabase-js'
+const supabase = createClient('https://nurlnqzmiyryfviuujsq.supabase.co', 'sb_publishable_WTdQ9aVR43R1weeWFHgTBQ_CdUkjR09')
+import React, { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import HomePage from './pages/HomePage'
@@ -16,6 +18,23 @@ import CandidatePortalPage from './pages/CandidatePortalPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 
 function App() {
+
+  useEffect(() => {
+    const trackVisit = async () => {
+      try {
+        const res = await fetch('https://ipapi.co/json/');
+        const geo = await res.json();
+        await supabase.from('site_visits').insert({
+          country: geo.country_name,
+          country_code: geo.country_code,
+          city: geo.city,
+          page: window.location.pathname
+        });
+      } catch (e) {}
+    };
+    trackVisit();
+  }, []);
+
   return (
     <Router>
       <Routes>
