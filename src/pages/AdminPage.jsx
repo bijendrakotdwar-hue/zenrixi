@@ -393,7 +393,7 @@ const AdminPage = () => {
         {/* Mobile nav */}
         <div className="md:hidden w-full">
           <div className="flex gap-2 p-3 bg-white border-b overflow-x-auto">
-            {[['dashboard','Dashboard'],['candidates','Candidates'],['companies','Companies'],['jobs','Jobs'],['consultants','Consultants'],['invoices','Invoices'],['payments','Payments'],['bulk','Bulk Upload'],['support','Support'],['team','Team']].map(([id,label]) => (
+            {[['dashboard','Dashboard'],['candidates','Candidates'],['companies','Companies'],['jobs','Jobs'],['consultants','Consultants'],['invoices','Invoices'],['payments','Payments'],['bulk','Bulk Upload'],['support','Support'],['team','Team'],['analytics','Analytics']].map(([id,label]) => (
               <button key={id} onClick={() => setTab(id)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${tab===id?'bg-blue-600 text-white':'bg-gray-100 text-gray-600'}`}>{label}</button>
             ))}
@@ -480,6 +480,10 @@ const AdminPage = () => {
           )}
 
           {/* CANDIDATES */}
+          
+          {tab === 'analytics' && (
+            <AnalyticsTab supabaseUrl={SUPABASE_URL} headers={h} counts={{candidates: candidates.length, companies: companies.length, consultants: consultants.length}} />
+          )}
           {tab === 'candidates' && (
             <div>
               <h2 className="text-2xl font-black mb-6">All Candidates ({candidates.length})</h2>
@@ -1127,3 +1131,134 @@ const AdminPage = () => {
 }
 
 export default AdminPage
+
+function AnalyticsTab({ supabaseUrl, headers, counts }) {
+  const [visits, setVisits] = React.useState([])
+  const [loading, setLoading] = React.useState(true)
+  const [registrations, setRegistrations] = React.useState([])
+
+  React.useEffect(() => {
+    const load = async () => {
+      try {
+        const [v, c, co, cn] = await Promise.all([
+          fetch(`${supabaseUrl}/rest/v1/site_visits?select=country,country_code,city,page,visited_at&order=visited_at.desc&limit=500`, { headers }),
+          fetch(`${supabaseUrl}/rest/v1/candidates?select=created_at&order=created_at.desc`, { headers }),
+          fetch(`${supabaseUrl}/rest/v1/companies?select=created_at&order=created_at.desc`, { headers }),
+          fetch(`${supabaseUrl}/rest/v1/consultants?select=created_at&order=created_at.desc`, { headers }),
+        ])
+        const vd = await v.json()
+        const cd = await c.json()
+        const cod = await co.json()
+        const cnd = await cn.json()
+        setVisits(vd)
+        const today = new Date().toISOString().slice(0,10)
+        const week = new Date(Date.now()-7*24*60*60*1000).toISOString()
+        setRegistrations([
+          { label: 'Candidates', total: cd.length, today: cd.filter(x=>x.created_at?.startsWith(today)).length, week: cd.filter(x=>x.created_at>week).length },
+          { label: 'Companies', total: cod.length, today: cod.filter(x=>x.created_at?.startsWith(today)).length, week: cod.filter(x=>x.created_at>week).length },
+          { label: 'Consultants', total: cnd.length, today: cnd.filter(x=>x.created_at?.startsWith(today)).length, week: cnd.filter(x=>x.created_at>week).length },
+        ])
+      } catch(e) { console.error(e) }
+      finally { setLoading(false) }
+    }
+    load()
+  }, [])
+
+  const countryCounts = visits.reduce((acc, v) => {
+    if (v.country) acc[v.country] = (acc[v.country]||0)+1
+    return acc
+  }, {})
+  const countryList = Object.entries(countryCounts).sort((a,b)=>b[1]-a[1])
+
+  const pageCounts = visits.reduce((acc, v) => {
+    if (v.page) acc[v.page] = (acc[v.page]||0)+1
+    return acc
+  }, {})
+  const pageList = Object.entries(pageCounts).sort((a,b)=>b[1]-a[1]).slice(0,10)
+
+  const today = new Date().toISOString().slice(0,10)
+  const todayVisits = visits.filter(v=>v.visited_at?.startsWith(today)).length
+  const weekVisits = visits.filter(v=>v.visited_at > new Date(Date.now()-7*24*60*60*1000).toISOString()).length
+
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-black">Analytics & Reports</h2>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: "Total Visits", value: visits.length, color: "bg-blue-500" },
+          { label: "Today Visits", value: todayVisits, color: "bg-green-500" },
+          { label: "This Week", value: weekVisits, color: "bg-purple-500" },
+          { label: "Countries", value: countryList.length, color: "bg-orange-500" },
+        ].map(s => (
+          <div key={s.label} className="bg-white rounded-2xl p-4 shadow-sm border">
+            <div className={`w-10 h-10 ${s.color} rounded-xl flex items-center justify-center mb-3`}>
+              <span className="text-white text-lg">📊</span>
+            </div>
+            <div className="text-2xl font-black">{s.value}</div>
+            <div className="text-sm text-gray-500">{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-white rounded-2xl p-5 shadow-sm border">
+        <h3 className="font-bold text-lg mb-4">📋 Registrations Report</h3>
+        <table className="w-full text-sm">
+          <thead><tr className="bg-gray-50">
+            <th className="text-left px-4 py-2">Type</th>
+            <th className="text-center px-4 py-2">Total</th>
+            <th className="text-center px-4 py-2">Today</th>
+            <th className="text-center px-4 py-2">This Week</th>
+          </tr></thead>
+          <tbody>
+            {registrations.map(r => (
+              <tr key={r.label} className="border-t">
+                <td className="px-4 py-3 font-medium">{r.label}</td>
+                <td className="px-4 py-3 text-center font-bold text-blue-600">{r.total}</td>
+                <td className="px-4 py-3 text-center text-green-600">{r.today}</td>
+                <td className="px-4 py-3 text-center text-purple-600">{r.week}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white rounded-2xl p-5 shadow-sm border">
+          <h3 className="font-bold text-lg mb-4">🌍 Visitors by Country</h3>
+          {countryList.length === 0 ? <p className="text-gray-400 text-sm">No data yet — visit the site first!</p> :
+          <div className="space-y-2 max-h-80 overflow-y-auto">
+            {countryList.map(([country, count]) => (
+              <div key={country} className="flex items-center gap-3">
+                <div className="flex-1">
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="font-medium">{country}</span>
+                    <span className="text-gray-500">{count}</span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full">
+                    <div className="h-2 bg-blue-500 rounded-full" style={{width: `${(count/visits.length*100).toFixed(0)}%`}}></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>}
+        </div>
+
+        <div className="bg-white rounded-2xl p-5 shadow-sm border">
+          <h3 className="font-bold text-lg mb-4">📄 Top Pages</h3>
+          {pageList.length === 0 ? <p className="text-gray-400 text-sm">No data yet!</p> :
+          <div className="space-y-2">
+            {pageList.map(([page, count]) => (
+              <div key={page} className="flex justify-between items-center border-b pb-2">
+                <span className="text-sm font-medium text-gray-700">{page || '/'}</span>
+                <span className="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{count}</span>
+              </div>
+            ))}
+          </div>}
+        </div>
+      </div>
+    </div>
+  )
+}
