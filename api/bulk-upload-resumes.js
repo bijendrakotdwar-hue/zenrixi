@@ -1,9 +1,9 @@
-const { createClient } = require('@supabase/supabase-js');
-const OpenAI = require('openai');
+import { createClient } from '@supabase/supabase-js';
+import OpenAI from 'openai';
 
-module.exports.config = { api: { bodyParser: { sizeLimit: '10mb' } } };
+export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
 
-module.exports.default = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { fileName, fileData, fileType } = req.body;
@@ -15,23 +15,21 @@ module.exports.default = async function handler(req, res) {
     const lowerName = fileName.toLowerCase();
 
     if (lowerName.endsWith('.pdf')) {
-      const pdfParse = require('pdf-parse');
+      const { default: pdfParse } = await import('pdf-parse/lib/pdf-parse.js');
       const parsed = await pdfParse(buffer);
       extractedText = parsed.text;
     } else if (lowerName.endsWith('.docx')) {
-      const mammoth = require('mammoth');
+      const mammoth = await import('mammoth');
       const result = await mammoth.extractRawText({ buffer });
       extractedText = result.value;
     } else {
       return res.status(400).json({ error: 'Unsupported file type: ' + fileName });
     }
 
-    if (!extractedText || extractedText.trim().length < 30) {
-      return res.status(422).json({ error: 'Could not extract readable text from file' });
-    }
+    if (!extractedText || extractedText.trim().length < 30)
+      return res.status(422).json({ error: 'Could not extract readable text' });
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       temperature: 0.1,
@@ -51,7 +49,7 @@ module.exports.default = async function handler(req, res) {
 
     const supabase = createClient(
       process.env.VITE_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
+      process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
     const { data, error } = await supabase.from('candidates').insert({
@@ -77,4 +75,4 @@ module.exports.default = async function handler(req, res) {
     console.error('bulk-upload error:', err);
     return res.status(500).json({ error: err.message || 'Internal server error' });
   }
-};
+}
