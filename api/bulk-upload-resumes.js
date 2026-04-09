@@ -51,18 +51,16 @@ export default async function handler(req, res) {
         'Prefer': 'return=representation'
       },
       body: JSON.stringify({
-        full_name: parsed.full_name || 'Unknown',
+        name: parsed.full_name || 'Unknown',
         email: parsed.email || null,
         phone: parsed.phone || null,
-        location: parsed.location || null,
         current_title: parsed.current_title || null,
         experience_years: parsed.experience_years || 0,
-        skills: parsed.skills || [],
+        parsed_skills: parsed.skills || [],
         education: parsed.education || null,
         summary: parsed.summary || null,
         resume_file_name: fileName,
         source: 'bulk_upload',
-        status: 'active',
         created_at: new Date().toISOString()
       })
     });
