@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import BulkUploadCard from '../components/admin/BulkUploadCard';
 import { SUPABASE_URL, SUPABASE_KEY } from '../lib/supabase'
 import { Users, Briefcase, Building2, TrendingUp, Trash2, Eye, LogOut, RefreshCw, DollarSign, FileText, Bell } from 'lucide-react'
 
@@ -438,6 +439,7 @@ const AdminPage = () => {
               {/* Recent Activity */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="bg-white rounded-2xl border p-5">
+                <BulkUploadCard onCandidatesAdded={() => window.location.reload()} />
                   <h3 className="font-bold mb-4 flex items-center gap-2"><Users className="w-4 h-4 text-blue-500" /> Recent Candidates</h3>
                   <div className="space-y-3">
                     {candidates.slice(0,5).map(c => (
