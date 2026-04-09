@@ -1,6 +1,6 @@
+import React, { useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 const supabase = createClient('https://nurlnqzmiyryfviuujsq.supabase.co', 'sb_publishable_WTdQ9aVR43R1weeWFHgTBQ_CdUkjR09')
-import React, { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import HomePage from './pages/HomePage'
