@@ -8,36 +8,35 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'No text provided' });
 
   try {
-    // Gemini API (free)
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `You are a resume parser. Extract info and return ONLY valid JSON, no markdown, no backticks.
-Schema: {"full_name":"","email":null,"phone":null,"location":null,"current_title":null,"experience_years":0,"skills":[],"education":null,"summary":null}
+    // Groq API (free)
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        temperature: 0.1,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a resume parser. Return ONLY a valid JSON object, no markdown, no backticks, no explanation. Schema: {"full_name":"","email":null,"phone":null,"location":null,"current_title":null,"experience_years":0,"skills":[],"education":null,"summary":null}'
+          },
+          { role: 'user', content: extractedText.substring(0, 5000) }
+        ]
+      })
+    });
 
-Resume text:
-${extractedText.substring(0, 5000)}`
-            }]
-          }],
-          generationConfig: { temperature: 0.1 }
-        })
-      }
-    );
+    const groqData = await groqRes.json();
+    if (!groqRes.ok) return res.status(500).json({ error: 'Groq error', details: groqData });
 
-    const geminiData = await geminiRes.json();
-    if (!geminiRes.ok) return res.status(500).json({ error: 'Gemini error', details: geminiData });
-
-    const raw = (geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '{}')
+    const raw = (groqData.choices?.[0]?.message?.content || '{}')
       .replace(/```json|```/g, '').trim();
 
     let parsed;
     try { parsed = JSON.parse(raw); }
-    catch (e) { return res.status(500).json({ error: 'Gemini JSON parse failed', raw }); }
+    catch (e) { return res.status(500).json({ error: 'Groq JSON parse failed', raw }); }
 
     // Supabase via fetch
     const supaUrl = process.env.VITE_SUPABASE_URL;
