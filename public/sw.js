@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zenrixi-v1'
+const CACHE_NAME = 'zenrixi-v2'
 const urlsToCache = [
   '/',
   '/jobs',
