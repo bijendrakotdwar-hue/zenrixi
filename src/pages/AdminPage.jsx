@@ -50,7 +50,9 @@ const AdminPage = () => {
 
   useEffect(() => {
     const saved = localStorage.getItem('admin_session')
-    if (saved) { setIsLoggedIn(true); loadAllData() }
+    const expiry = localStorage.getItem('admin_session_expiry')
+    if (saved && expiry && Date.now() < parseInt(expiry)) { setIsLoggedIn(true); loadAllData() }
+    else { localStorage.removeItem('admin_session'); localStorage.removeItem('admin_session_expiry'); localStorage.removeItem('admin_session_expiry') }
   }, [])
 
   const handleLogin = async () => {
@@ -62,6 +64,7 @@ const AdminPage = () => {
       if (!data.length || data[0].password !== password) { setError('Invalid credentials'); return }
       setIsLoggedIn(true)
       localStorage.setItem('admin_session', 'true')
+      localStorage.setItem('admin_session_expiry', Date.now() + 8*60*60*1000) // 8 hours
       await loadAllData()
     } catch { setError('Login failed') }
     finally { setLoading(false) }
