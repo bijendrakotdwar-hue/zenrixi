@@ -38,6 +38,11 @@ const CompanyPortalPage = () => {
   const [interviewData, setInterviewData] = useState({ scheduled_at: '', duration_minutes: 60, interview_type: 'video', meeting_link: '', interviewer_name: '', notes: '' })
   const [offerData, setOfferData] = useState({ salary: '', joining_date: '', designation: '', department: '' })
   const [job, setJob] = useState({ title: '', description: '', skills: '', experience: '0', location: '', salary: '' })
+  const [filterJob, setFilterJob] = useState('all')
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [filterExp, setFilterExp] = useState('all')
+  const [searchName, setSearchName] = useState('')
+  const [kanbanJob, setKanbanJob] = useState('all')
 
   React.useEffect(() => {
     const saved = localStorage.getItem('company_session')
@@ -404,7 +409,7 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
         {/* Mobile nav */}
         <div className="md:hidden w-full">
           <div className="flex gap-2 p-3 bg-white border-b overflow-x-auto">
-            {[['dashboard','Dashboard'],['post-job','Post Job'],['jobs','Jobs'],['candidates','Candidates'],['interviews','Interviews'],['offer-letter','Offer']].map(([id,label]) => (
+            {[['dashboard','Dashboard'],['post-job','Post Job'],['jobs','Jobs'],['candidates','Candidates'],['interviews','Interviews'],['offer-letter','Offer'],['kanban','Kanban']].map(([id,label]) => (
               <button key={id} onClick={() => setTab(id)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${tab===id?'bg-blue-600 text-white':'bg-gray-100 text-gray-500'}`}>{label}</button>
             ))}
@@ -571,16 +576,56 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
           {/* Candidates Pipeline */}
           {tab==='candidates' && (
             <div>
-              <h2 className="text-2xl font-bold mb-2">Candidate Pipeline</h2>
-              <p className="text-sm text-gray-500 mb-6">AI-ranked candidates for your jobs</p>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-2xl font-bold">Candidate Pipeline</h2>
+                  <p className="text-sm text-gray-500">AI-ranked candidates for your jobs</p>
+                </div>
+              </div>
+              {/* Filters */}
+              <div className="bg-white rounded-2xl border p-4 mb-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <input value={searchName} onChange={e=>setSearchName(e.target.value)} placeholder="🔍 Search name..."
+                  className="border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <select value={filterJob} onChange={e=>setFilterJob(e.target.value)}
+                  className="border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="all">All Jobs</option>
+                  {jobs.map(j=><option key={j.id} value={j.id}>{j.title}</option>)}
+                </select>
+                <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}
+                  className="border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="all">All Stages</option>
+                  {STAGES.map(s=><option key={s} value={s}>{s}</option>)}
+                </select>
+                <select value={filterExp} onChange={e=>setFilterExp(e.target.value)}
+                  className="border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="all">Any Experience</option>
+                  <option value="0-2">0-2 yrs</option>
+                  <option value="3-5">3-5 yrs</option>
+                  <option value="6+">6+ yrs</option>
+                </select>
+              </div>
               {matches.length===0 ? (
                 <div className="bg-white rounded-2xl border p-12 text-center">
                   <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                   <p className="text-gray-500">No candidates yet. Post a job first!</p>
                 </div>
-              ) : (
+              ) : (() => {
+                const filtered = matches.filter(m => {
+                  const exp = m.candidates?.experience_years || 0
+                  const nameMatch = !searchName || m.candidates?.name?.toLowerCase().includes(searchName.toLowerCase())
+                  const jobMatch = filterJob === 'all' || m.job_id === filterJob
+                  const statusMatch = filterStatus === 'all' || m.status === filterStatus
+                  const expMatch = filterExp === 'all' ||
+                    (filterExp === '0-2' && exp <= 2) ||
+                    (filterExp === '3-5' && exp >= 3 && exp <= 5) ||
+                    (filterExp === '6+' && exp >= 6)
+                  return nameMatch && jobMatch && statusMatch && expMatch
+                }).sort((a,b) => b.ai_score - a.ai_score)
+                return filtered.length === 0 ? (
+                  <div className="bg-white rounded-2xl border p-8 text-center text-gray-400 text-sm">No candidates match your filters</div>
+                ) : (
                 <div className="space-y-3">
-                  {matches.sort((a,b) => b.ai_score - a.ai_score).map(match => (
+                  {filtered.map(match => (
                     <div key={match.id} className="bg-white rounded-2xl border p-5 hover:shadow-md transition-all">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
@@ -623,6 +668,85 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
                       </div>
                     </div>
                   ))}
+                </div>
+                )
+              })()}
+            </div>
+          )}
+
+          {/* KANBAN BOARD */}
+          {tab==='kanban' && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold">📋 Kanban Board</h2>
+                <select value={kanbanJob} onChange={e=>setKanbanJob(e.target.value)}
+                  className="border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="all">All Jobs</option>
+                  {jobs.map(j=><option key={j.id} value={j.id}>{j.title}</option>)}
+                </select>
+              </div>
+              {matches.length===0 ? (
+                <div className="bg-white rounded-2xl border p-12 text-center">
+                  <p className="text-gray-500">No candidates yet. Post a job first!</p>
+                </div>
+              ) : (
+                <div className="flex gap-3 overflow-x-auto pb-4">
+                  {STAGES.map(stage => {
+                    const stageCandidates = matches.filter(m =>
+                      (kanbanJob === 'all' || m.job_id === kanbanJob) && m.status === stage
+                    )
+                    return (
+                      <div key={stage} className="flex-shrink-0 w-64">
+                        <div className={`rounded-xl px-3 py-2 mb-2 flex items-center justify-between ${STAGE_COLORS[stage]}`}>
+                          <span className="text-sm font-bold">{stage}</span>
+                          <span className="text-xs font-bold bg-white/50 rounded-full px-2 py-0.5">{stageCandidates.length}</span>
+                        </div>
+                        <div className="space-y-2 min-h-24">
+                          {stageCandidates.map(match => (
+                            <div key={match.id} className="bg-white rounded-xl border p-3 shadow-sm hover:shadow-md transition-shadow">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center font-bold text-white text-sm flex-shrink-0">
+                                  {match.candidates?.name?.charAt(0)?.toUpperCase()}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-sm truncate">{match.candidates?.name}</p>
+                                  <p className="text-xs text-gray-400 truncate">{match.candidates?.job_title}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs text-blue-600 font-bold">{match.ai_score}% match</span>
+                                <span className="text-xs text-gray-400">{match.candidates?.experience_years}yr exp</span>
+                              </div>
+                              <p className="text-xs text-gray-400 truncate mb-2">{match.jobs?.title}</p>
+                              <div className="flex gap-1 flex-wrap">
+                                {STAGES.filter(s=>s!==stage).slice(0,2).map(s=>(
+                                  <button key={s} onClick={()=>updateMatchStatus(match.id,s)}
+                                    className="text-xs bg-gray-100 hover:bg-blue-100 text-gray-600 hover:text-blue-700 px-2 py-0.5 rounded-lg transition-colors">
+                                    → {s}
+                                  </button>
+                                ))}
+                              </div>
+                              <div className="flex gap-1 mt-2">
+                                <button onClick={()=>{setSelectedCandidate(match);setShowInterviewModal(true)}}
+                                  className="flex-1 text-xs bg-orange-50 text-orange-600 py-1 rounded-lg hover:bg-orange-100">📅</button>
+                                {match.candidates?.resume_url && (
+                                  <a href={match.candidates.resume_url} target="_blank" rel="noreferrer"
+                                    className="flex-1 text-xs bg-blue-50 text-blue-600 py-1 rounded-lg hover:bg-blue-100 text-center">📥</a>
+                                )}
+                                <a href={`mailto:${match.candidates?.email}`}
+                                  className="flex-1 text-xs bg-gray-50 text-gray-600 py-1 rounded-lg hover:bg-gray-100 text-center">✉️</a>
+                              </div>
+                            </div>
+                          ))}
+                          {stageCandidates.length === 0 && (
+                            <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center text-xs text-gray-300">
+                              No candidates
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
