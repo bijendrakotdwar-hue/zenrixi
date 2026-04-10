@@ -33,6 +33,7 @@ const AdminPage = () => {
   const [selectedSession, setSelectedSession] = useState(null)
   const [adminReply, setAdminReply] = useState('')
   const [team, setTeam] = useState([])
+  const [roles, setRoles] = useState([])
   const [showTeamForm, setShowTeamForm] = useState(false)
   const [editingTeam, setEditingTeam] = useState(null)
   const [teamForm, setTeamForm] = useState({
@@ -90,6 +91,8 @@ const AdminPage = () => {
       setPayments(await pay.json())
       const teamRes = await fetch(`${SUPABASE_URL}/rest/v1/admin_team?select=*&order=created_at.desc`, { headers: h })
       setTeam(await teamRes.json())
+      const rolesRes = await fetch(`${SUPABASE_URL}/rest/v1/admin_roles?select=*&order=created_at.asc`, { headers: h })
+      setRoles(await rolesRes.json())
       const scRes = await fetch(`${SUPABASE_URL}/rest/v1/support_chats?select=*&order=created_at.desc&limit=100`, { headers: h })
       setSupportChats(await scRes.json())
     } catch(e) { console.error(e) }
@@ -1133,12 +1136,96 @@ const AdminPage = () => {
           {tab === 'users' && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-black">User Management</h2>
-                <button onClick={() => { setEditingUser({}); setEditingType('new_user'); setEditForm({ name:'', email:'', phone:'', role:'candidate', status:'active', password:'', permissions:{ view_candidates:true, edit_candidates:false, delete_candidates:false, view_companies:true, edit_companies:false, delete_companies:false, view_jobs:true, edit_jobs:false, delete_jobs:false, manage_users:false, bulk_upload:false } }) }}
+                <h2 className="text-2xl font-black">👥 User Management</h2>
+                <button onClick={() => { setEditingUser({}); setEditingType('new_user'); setEditForm({ name:'', email:'', phone:'', role:'staff', role_id:'', status:'active', password:'', job_title:'', experience_years:'', permissions:{} }) }}
                   className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700">
                   + Create User
                 </button>
               </div>
+
+              {/* Role Management */}
+              <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b bg-gradient-to-r from-purple-50 to-indigo-50 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🔐</span>
+                    <h3 className="font-bold text-gray-800">Roles & Permissions</h3>
+                  </div>
+                  <button onClick={() => { setEditingUser({}); setEditingType('new_role'); setEditForm({ role_name:'', description:'', permissions:{ view_candidates:false, edit_candidates:false, delete_candidates:false, download_resume:false, view_companies:false, edit_companies:false, view_jobs:false, edit_jobs:false, bulk_upload:false, view_invoices:false, view_payments:false, manage_users:false } }) }}
+                    className="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700">
+                    + New Role
+                  </button>
+                </div>
+                <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {roles.map(role => (
+                    <div key={role.id} className="border rounded-xl p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <h4 className="font-bold text-gray-800">{role.role_name}</h4>
+                          <p className="text-xs text-gray-400">{role.description}</p>
+                        </div>
+                        <div className="flex gap-1">
+                          <button onClick={() => { setEditingUser(role); setEditingType('edit_role'); setEditForm({...role}) }}
+                            className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-lg">✏️</button>
+                          <button onClick={async () => { if(window.confirm('Delete this role?')) { await fetch(`${SUPABASE_URL}/rest/v1/admin_roles?id=eq.${role.id}`, { method:'DELETE', headers:h }); await loadAllData() } }}
+                            className="text-xs bg-red-100 text-red-500 px-2 py-1 rounded-lg">🗑️</button>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {Object.entries(role.permissions || {}).filter(([,v])=>v).map(([k])=>(
+                          <span key={k} className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                            {k.replace(/_/g,' ')}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {roles.length === 0 && <p className="text-gray-400 text-sm col-span-3 py-4 text-center">No roles yet — create one above!</p>}
+                </div>
+              </div>
+
+              {/* Staff/Employees */}
+              <div className="bg-white rounded-2xl border overflow-hidden shadow-sm">
+                <div className="px-5 py-4 border-b bg-gray-50 flex items-center gap-2">
+                  <span className="text-lg">🧑‍💼</span>
+                  <h3 className="font-bold text-gray-800">Staff / Employees ({team.length})</h3>
+                </div>
+                <table className="w-full text-sm">
+                  <thead><tr className="bg-gray-50 border-b">
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Name</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">Email</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">Role</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">Status</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Actions</th>
+                  </tr></thead>
+                  <tbody>
+                    {team.map((m, i) => (
+                      <tr key={m.id} className={`border-b hover:bg-gray-50 ${i%2===0?'':'bg-gray-50/30'}`}>
+                        <td className="px-4 py-3 font-medium">{m.name}</td>
+                        <td className="px-4 py-3 text-gray-500 hidden md:table-cell">{m.email}</td>
+                        <td className="px-4 py-3 hidden md:table-cell">
+                          <span className="bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded-full">
+                            {roles.find(r=>r.id===m.role_id)?.role_name || m.role || 'Staff'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 hidden md:table-cell">
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${m.status==='active'?'bg-green-100 text-green-700':'bg-red-100 text-red-600'}`}>
+                            {m.status || 'active'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <button onClick={() => { setEditingUser(m); setEditingType('staff'); setEditForm({...m, password:''}) }}
+                              className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-lg hover:bg-blue-200">✏️ Edit</button>
+                            <button onClick={() => deleteRecord('admin_team', m.id, m.name)}
+                              className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-lg hover:bg-red-200">🗑️ Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
               {/* Candidates */}
               <div className="bg-white rounded-2xl border overflow-hidden shadow-sm">
                 <div className="px-5 py-4 border-b bg-gray-50 flex items-center gap-2">
@@ -1171,6 +1258,7 @@ const AdminPage = () => {
                   </tbody>
                 </table>
               </div>
+
               {/* Companies */}
               <div className="bg-white rounded-2xl border overflow-hidden shadow-sm">
                 <div className="px-5 py-4 border-b bg-gray-50 flex items-center gap-2">
@@ -1201,164 +1289,180 @@ const AdminPage = () => {
                   </tbody>
                 </table>
               </div>
-              {/* Consultants */}
-              <div className="bg-white rounded-2xl border overflow-hidden shadow-sm">
-                <div className="px-5 py-4 border-b bg-gray-50 flex items-center gap-2">
-                  <span className="text-lg">🧑‍💼</span>
-                  <h3 className="font-bold text-gray-800">Consultants ({consultants.length})</h3>
-                </div>
-                <table className="w-full text-sm">
-                  <thead><tr className="bg-gray-50 border-b">
-                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Name</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">Email</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Actions</th>
-                  </tr></thead>
-                  <tbody>
-                    {consultants.map((c, i) => (
-                      <tr key={c.id} className={`border-b hover:bg-gray-50 ${i%2===0?'':'bg-gray-50/30'}`}>
-                        <td className="px-4 py-3 font-medium">{c.name}</td>
-                        <td className="px-4 py-3 text-gray-500 hidden md:table-cell">{c.email || '—'}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-2">
-                            <button onClick={() => { setEditingUser(c); setEditingType('consultant'); setEditForm({...c, password:''}) }}
-                              className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-lg hover:bg-blue-200">✏️ Edit</button>
-                            <button onClick={() => deleteRecord('consultants', c.id, c.name)}
-                              className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-lg hover:bg-red-200">🗑️ Delete</button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
             </div>
           )}
 
-          {/* EDIT MODAL */}
+          {/* EDIT / CREATE MODAL */}
           {editingUser && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between p-6 border-b">
+                <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white z-10">
                   <h3 className="text-lg font-bold">
-                    {editingType === 'new_user' ? '➕ Create New User' :
+                    {editingType === 'new_user' ? '➕ Create User' :
+                     editingType === 'new_role' ? '🔐 Create Role' :
+                     editingType === 'edit_role' ? '✏️ Edit Role' :
+                     editingType === 'staff' ? '✏️ Edit Staff' :
                      editingType === 'candidate' ? '✏️ Edit Candidate' :
-                     editingType === 'company' ? '✏️ Edit Company' : '✏️ Edit Consultant'}
+                     editingType === 'company' ? '✏️ Edit Company' : '✏️ Edit'}
                   </h3>
                   <button onClick={() => { setEditingUser(null); setEditForm({}) }}
-                    className="text-gray-400 hover:text-gray-600 text-2xl font-bold">×</button>
+                    className="text-gray-400 hover:text-gray-600 text-2xl font-bold w-8 h-8 flex items-center justify-center">×</button>
                 </div>
                 <div className="p-6 space-y-4">
-                  {/* Role selector for new user */}
-                  {editingType === 'new_user' && (
+
+                  {/* ROLE CREATE/EDIT FORM */}
+                  {(editingType === 'new_role' || editingType === 'edit_role') && (<>
                     <div>
-                      <label className="text-xs font-semibold text-gray-500 block mb-1">Role*</label>
-                      <select value={editForm.role || 'candidate'}
-                        onChange={e => setEditForm(f => ({...f, role: e.target.value}))}
-                        className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                        <option value="candidate">Candidate</option>
-                        <option value="company">Company</option>
-                        <option value="consultant">Consultant</option>
-                        <option value="staff">Staff / Admin</option>
-                      </select>
+                      <label className="text-xs font-semibold text-gray-500 block mb-1">Role Name*</label>
+                      <input value={editForm.role_name || ''} onChange={e => setEditForm(f=>({...f, role_name:e.target.value}))}
+                        className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                        placeholder="e.g. HR Manager, Recruiter, Accounts" />
                     </div>
-                  )}
-                  {/* Name */}
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 block mb-1">
-                      {editingType === 'company' ? 'Company Name*' : 'Full Name*'}
-                    </label>
-                    <input value={editingType === 'company' ? (editForm.company_name || '') : (editForm.name || '')}
-                      onChange={e => setEditForm(f => editingType === 'company' ? {...f, company_name: e.target.value} : {...f, name: e.target.value})}
-                      className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                      placeholder="Enter name" />
-                  </div>
-                  {/* Email */}
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 block mb-1">Email</label>
-                    <input value={editForm.email || ''} onChange={e => setEditForm(f => ({...f, email: e.target.value}))}
-                      className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                      placeholder="Enter email" type="email" />
-                  </div>
-                  {/* Phone */}
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 block mb-1">Phone</label>
-                    <input value={editForm.phone || ''} onChange={e => setEditForm(f => ({...f, phone: e.target.value}))}
-                      className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                      placeholder="Enter phone" />
-                  </div>
-                  {/* Candidate specific */}
-                  {(editingType === 'candidate' || editingType === 'new_user') && (
-                    <>
-                      <div>
-                        <label className="text-xs font-semibold text-gray-500 block mb-1">Job Title</label>
-                        <input value={editForm.job_title || ''} onChange={e => setEditForm(f => ({...f, job_title: e.target.value}))}
-                          className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                          placeholder="e.g. Software Engineer" />
-                      </div>
-                      <div>
-                        <label className="text-xs font-semibold text-gray-500 block mb-1">Experience (years)</label>
-                        <input value={editForm.experience_years || ''} onChange={e => setEditForm(f => ({...f, experience_years: e.target.value}))}
-                          className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                          placeholder="e.g. 3" type="number" />
-                      </div>
-                    </>
-                  )}
-                  {/* Password */}
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 block mb-1">
-                      {editingType === 'new_user' ? 'Password*' : 'New Password (optional)'}
-                    </label>
-                    <input value={editForm.password || ''} onChange={e => setEditForm(f => ({...f, password: e.target.value}))}
-                      className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                      placeholder="Enter password" type="password" />
-                  </div>
-                  {/* Status */}
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 block mb-1">Status</label>
-                    <select value={editForm.status || 'active'} onChange={e => setEditForm(f => ({...f, status: e.target.value}))}
-                      className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                      <option value="active">✅ Active</option>
-                      <option value="inactive">❌ Inactive</option>
-                      <option value="suspended">🚫 Suspended</option>
-                    </select>
-                  </div>
-                  {/* Permissions - only for staff/consultant */}
-                  {(editingType === 'consultant' || (editingType === 'new_user' && editForm.role === 'staff')) && (
+                    <div>
+                      <label className="text-xs font-semibold text-gray-500 block mb-1">Description</label>
+                      <input value={editForm.description || ''} onChange={e => setEditForm(f=>({...f, description:e.target.value}))}
+                        className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                        placeholder="Brief description of this role" />
+                    </div>
                     <div>
                       <label className="text-xs font-semibold text-gray-500 block mb-2">🔐 Permissions</label>
-                      <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+                      <div className="bg-gray-50 rounded-xl p-3 space-y-1">
                         {[
-                          ['view_candidates','View Candidates'],
-                          ['edit_candidates','Edit Candidates'],
-                          ['delete_candidates','Delete Candidates'],
-                          ['view_companies','View Companies'],
-                          ['edit_companies','Edit Companies'],
-                          ['view_jobs','View Jobs'],
-                          ['edit_jobs','Edit Jobs'],
-                          ['bulk_upload','Bulk Upload'],
-                          ['manage_users','Manage Users'],
+                          ['view_candidates','👤 View Candidates'],
+                          ['edit_candidates','✏️ Edit Candidates'],
+                          ['delete_candidates','🗑️ Delete Candidates'],
+                          ['download_resume','📥 Download Resume'],
+                          ['view_companies','🏢 View Companies'],
+                          ['edit_companies','✏️ Edit Companies'],
+                          ['view_jobs','💼 View Jobs'],
+                          ['edit_jobs','✏️ Edit Jobs'],
+                          ['bulk_upload','📄 Bulk Upload'],
+                          ['view_invoices','🧾 View Invoices'],
+                          ['view_payments','💰 View Payments'],
+                          ['manage_users','👥 Manage Users'],
                         ].map(([key, label]) => (
-                          <label key={key} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-100 rounded-lg px-2 py-1">
+                          <label key={key} className="flex items-center gap-3 text-sm cursor-pointer hover:bg-white rounded-lg px-2 py-1.5 transition-colors">
                             <input type="checkbox"
                               checked={editForm.permissions?.[key] || false}
-                              onChange={e => setEditForm(f => ({...f, permissions: {...(f.permissions||{}), [key]: e.target.checked}}))}
-                              className="w-4 h-4 accent-blue-600" />
+                              onChange={e => setEditForm(f=>({...f, permissions:{...(f.permissions||{}), [key]:e.target.checked}}))}
+                              className="w-4 h-4 accent-purple-600" />
                             <span>{label}</span>
                           </label>
                         ))}
                       </div>
                     </div>
-                  )}
-                </div>
-                <div className="flex gap-3 p-6 border-t">
-                  <button onClick={() => { setEditingUser(null); setEditForm({}) }}
-                    className="flex-1 py-2 rounded-xl border text-sm font-semibold text-gray-600 hover:bg-gray-50">
-                    Cancel
-                  </button>
-                  <button onClick={saveEdit}
-                    className="flex-1 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">
-                    💾 Save Changes
-                  </button>
+                    <div className="flex gap-3 pt-2">
+                      <button onClick={() => { setEditingUser(null); setEditForm({}) }}
+                        className="flex-1 py-2 rounded-xl border text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
+                      <button onClick={async () => {
+                        if(!editForm.role_name) { alert('Role name required'); return }
+                        const method = editingType === 'edit_role' ? 'PATCH' : 'POST'
+                        const url = editingType === 'edit_role'
+                          ? `${SUPABASE_URL}/rest/v1/admin_roles?id=eq.${editingUser.id}`
+                          : `${SUPABASE_URL}/rest/v1/admin_roles`
+                        await fetch(url, { method, headers:{...h,'Prefer':'return=minimal'}, body: JSON.stringify({ role_name:editForm.role_name, description:editForm.description, permissions:editForm.permissions }) })
+                        setEditingUser(null); setEditForm({})
+                        await loadAllData()
+                        alert(editingType === 'edit_role' ? 'Role updated!' : 'Role created!')
+                      }} className="flex-1 py-2 rounded-xl bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700">
+                        💾 Save Role
+                      </button>
+                    </div>
+                  </>)}
+
+                  {/* USER CREATE/EDIT FORM */}
+                  {(editingType === 'new_user' || editingType === 'staff' || editingType === 'candidate' || editingType === 'company') && (<>
+                    {editingType === 'new_user' && (
+                      <div>
+                        <label className="text-xs font-semibold text-gray-500 block mb-1">User Type*</label>
+                        <select value={editForm.role || 'staff'} onChange={e => setEditForm(f=>({...f, role:e.target.value, role_id:'', permissions:{}}))}
+                          className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                          <option value="staff">🧑‍💼 Staff / Employee</option>
+                          <option value="candidate">👤 Candidate</option>
+                          <option value="company">🏢 Company</option>
+                        </select>
+                      </div>
+                    )}
+                    <div>
+                      <label className="text-xs font-semibold text-gray-500 block mb-1">
+                        {editingType === 'company' ? 'Company Name*' : 'Full Name*'}
+                      </label>
+                      <input value={editingType === 'company' ? (editForm.company_name||'') : (editForm.name||'')}
+                        onChange={e => setEditForm(f => editingType==='company' ? {...f,company_name:e.target.value} : {...f,name:e.target.value})}
+                        className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                        placeholder="Enter name" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-gray-500 block mb-1">Email</label>
+                      <input type="email" value={editForm.email||''} onChange={e=>setEditForm(f=>({...f,email:e.target.value}))}
+                        className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                        placeholder="Enter email" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-gray-500 block mb-1">Phone</label>
+                      <input value={editForm.phone||''} onChange={e=>setEditForm(f=>({...f,phone:e.target.value}))}
+                        className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                        placeholder="Enter phone" />
+                    </div>
+                    {(editingType==='candidate'||(editingType==='new_user'&&editForm.role==='candidate')) && (<>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-500 block mb-1">Job Title</label>
+                        <input value={editForm.job_title||''} onChange={e=>setEditForm(f=>({...f,job_title:e.target.value}))}
+                          className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                          placeholder="e.g. Software Engineer" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-500 block mb-1">Experience (years)</label>
+                        <input type="number" value={editForm.experience_years||''} onChange={e=>setEditForm(f=>({...f,experience_years:e.target.value}))}
+                          className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                          placeholder="e.g. 3" />
+                      </div>
+                    </>)}
+                    {(editingType==='staff'||(editingType==='new_user'&&editForm.role==='staff')) && (
+                      <div>
+                        <label className="text-xs font-semibold text-gray-500 block mb-1">Assign Role</label>
+                        <select value={editForm.role_id||''} onChange={e => {
+                          const selectedRole = roles.find(r=>r.id===e.target.value)
+                          setEditForm(f=>({...f, role_id:e.target.value, permissions: selectedRole?.permissions || f.permissions}))
+                        }} className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                          <option value="">-- Select Role --</option>
+                          {roles.map(r=><option key={r.id} value={r.id}>{r.role_name}</option>)}
+                        </select>
+                        {editForm.role_id && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {Object.entries(roles.find(r=>r.id===editForm.role_id)?.permissions||{}).filter(([,v])=>v).map(([k])=>(
+                              <span key={k} className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{k.replace(/_/g,' ')}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <div>
+                      <label className="text-xs font-semibold text-gray-500 block mb-1">
+                        {editingType==='new_user'?'Password*':'New Password (optional)'}
+                      </label>
+                      <input type="password" value={editForm.password||''} onChange={e=>setEditForm(f=>({...f,password:e.target.value}))}
+                        className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                        placeholder="Enter password" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-gray-500 block mb-1">Status</label>
+                      <select value={editForm.status||'active'} onChange={e=>setEditForm(f=>({...f,status:e.target.value}))}
+                        className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="active">✅ Active</option>
+                        <option value="inactive">❌ Inactive</option>
+                        <option value="suspended">🚫 Suspended</option>
+                      </select>
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                      <button onClick={() => { setEditingUser(null); setEditForm({}) }}
+                        className="flex-1 py-2 rounded-xl border text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
+                      <button onClick={saveEdit}
+                        className="flex-1 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">
+                        💾 {editingType==='new_user'?'Create User':'Save Changes'}
+                      </button>
+                    </div>
+                  </>)}
                 </div>
               </div>
             </div>
