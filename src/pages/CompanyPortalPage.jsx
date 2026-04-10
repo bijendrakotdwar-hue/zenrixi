@@ -305,6 +305,70 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
 
   if (!isLoggedIn) {
     // EditJobModal rendered in logged-in view
+    const EditJobModal = () => editingJob ? (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setEditingJob(null)}>
+        <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-bold">✏️ Edit Job</h2>
+            <button onClick={() => setEditingJob(null)} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-semibold block mb-1">Job Title*</label>
+              <input value={editingJob.title || ''} onChange={e => setEditingJob({...editingJob, title: e.target.value})}
+                className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="text-sm font-semibold block mb-1">Description</label>
+              <textarea value={editingJob.description || ''} onChange={e => setEditingJob({...editingJob, description: e.target.value})} rows={3}
+                className="w-full border rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+            </div>
+            <div>
+              <label className="text-sm font-semibold block mb-1">Required Skills (comma separated)</label>
+              <input value={editingJob.required_skills || ''} onChange={e => setEditingJob({...editingJob, required_skills: e.target.value})}
+                placeholder="React, Node.js, JavaScript"
+                className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-semibold block mb-1">Min Experience (yrs)</label>
+                <input type="number" value={editingJob.min_experience || 0} onChange={e => setEditingJob({...editingJob, min_experience: e.target.value})}
+                  className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="text-sm font-semibold block mb-1">Location</label>
+                <input value={editingJob.location || ''} onChange={e => setEditingJob({...editingJob, location: e.target.value})}
+                  placeholder="Delhi / Remote"
+                  className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-semibold block mb-1">Salary (CTC)</label>
+              <input value={editingJob.salary || ''} onChange={e => setEditingJob({...editingJob, salary: e.target.value})}
+                placeholder="e.g. 8-12 LPA"
+                className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="text-sm font-semibold block mb-1">Status</label>
+              <select value={editingJob.status || 'active'} onChange={e => setEditingJob({...editingJob, status: e.target.value})}
+                className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="active">✅ Active</option>
+                <option value="inactive">⏸ Inactive</option>
+                <option value="closed">🔒 Closed</option>
+              </select>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setEditingJob(null)}
+                className="flex-1 py-2 rounded-xl border text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
+              <button onClick={saveJob} disabled={loading}
+                className="flex-1 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60">
+                {loading ? 'Saving...' : '💾 Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    ) : null
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
         <header className="bg-white shadow-sm py-4 px-6 flex items-center justify-between">
@@ -367,6 +431,23 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
       </div>
     )
   }
+
+  const saveJob = async () => {
+    if (!editingJob?.title) { alert('Title required'); return }
+    setLoading(true)
+    const skillsArray = typeof editingJob.required_skills === 'string'
+      ? editingJob.required_skills.split(',').map(s => s.trim()).filter(Boolean)
+      : editingJob.required_skills
+    await fetch(`${SUPABASE_URL}/rest/v1/jobs?id=eq.${editingJob.id}`, {
+      method: 'PATCH', headers: { ...h, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ title: editingJob.title, description: editingJob.description, required_skills: skillsArray, min_experience: parseInt(editingJob.min_experience)||0, location: editingJob.location, salary: editingJob.salary, status: editingJob.status })
+    })
+    setEditingJob(null)
+    await loadData(company.id)
+    setLoading(false)
+    alert('Job updated!')
+  }
+
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
