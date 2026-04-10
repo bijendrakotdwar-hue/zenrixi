@@ -384,6 +384,7 @@ const AdminPage = () => {
             ['placements', `Placements (${placements.length})`, TrendingUp],
             ['invoices', `Invoices (${invoices.length})`, FileText],
             ['payments', `Payments (${payments.length})`, DollarSign],
+            ['users', 'User Management', Users],
           ].map(([id, label, Icon]) => (
             <button key={id} onClick={() => setTab(id)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-left transition-all ${tab===id?'bg-blue-600 text-white':'text-gray-600 hover:bg-gray-100'}`}>
@@ -395,7 +396,7 @@ const AdminPage = () => {
         {/* Mobile nav */}
         <div className="md:hidden w-full">
           <div className="flex gap-2 p-3 bg-white border-b overflow-x-auto">
-            {[['dashboard','Dashboard'],['candidates','Candidates'],['companies','Companies'],['jobs','Jobs'],['consultants','Consultants'],['invoices','Invoices'],['payments','Payments'],['bulk','Bulk Upload'],['support','Support'],['team','Team'],['analytics','Analytics']].map(([id,label]) => (
+            {[['dashboard','Dashboard'],['candidates','Candidates'],['companies','Companies'],['jobs','Jobs'],['consultants','Consultants'],['invoices','Invoices'],['payments','Payments'],['bulk','Bulk Upload'],['support','Support'],['team','Team'],['users','Users'],['analytics','Analytics']].map(([id,label]) => (
               <button key={id} onClick={() => setTab(id)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${tab===id?'bg-blue-600 text-white':'bg-gray-100 text-gray-600'}`}>{label}</button>
             ))}
@@ -1124,6 +1125,242 @@ const AdminPage = () => {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+
+          {/* USER MANAGEMENT */}
+          {tab === 'users' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-black">User Management</h2>
+                <button onClick={() => { setEditingUser({}); setEditingType('new_user'); setEditForm({ name:'', email:'', phone:'', role:'candidate', status:'active', password:'', permissions:{ view_candidates:true, edit_candidates:false, delete_candidates:false, view_companies:true, edit_companies:false, delete_companies:false, view_jobs:true, edit_jobs:false, delete_jobs:false, manage_users:false, bulk_upload:false } }) }}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700">
+                  + Create User
+                </button>
+              </div>
+              {/* Candidates */}
+              <div className="bg-white rounded-2xl border overflow-hidden shadow-sm">
+                <div className="px-5 py-4 border-b bg-gray-50 flex items-center gap-2">
+                  <span className="text-lg">👤</span>
+                  <h3 className="font-bold text-gray-800">Candidates ({candidates.length})</h3>
+                </div>
+                <table className="w-full text-sm">
+                  <thead><tr className="bg-gray-50 border-b">
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Name</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">Email</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">Experience</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Actions</th>
+                  </tr></thead>
+                  <tbody>
+                    {candidates.map((c, i) => (
+                      <tr key={c.id} className={`border-b hover:bg-gray-50 ${i%2===0?'':'bg-gray-50/30'}`}>
+                        <td className="px-4 py-3 font-medium">{c.name}</td>
+                        <td className="px-4 py-3 text-gray-500 hidden md:table-cell">{c.email || '—'}</td>
+                        <td className="px-4 py-3 hidden md:table-cell">{c.experience_years || 0} yrs</td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <button onClick={() => { setEditingUser(c); setEditingType('candidate'); setEditForm({...c, password:''}) }}
+                              className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-lg hover:bg-blue-200">✏️ Edit</button>
+                            <button onClick={() => deleteRecord('candidates', c.id, c.name)}
+                              className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-lg hover:bg-red-200">🗑️ Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/* Companies */}
+              <div className="bg-white rounded-2xl border overflow-hidden shadow-sm">
+                <div className="px-5 py-4 border-b bg-gray-50 flex items-center gap-2">
+                  <span className="text-lg">🏢</span>
+                  <h3 className="font-bold text-gray-800">Companies ({companies.length})</h3>
+                </div>
+                <table className="w-full text-sm">
+                  <thead><tr className="bg-gray-50 border-b">
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Company</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">Email</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Actions</th>
+                  </tr></thead>
+                  <tbody>
+                    {companies.map((c, i) => (
+                      <tr key={c.id} className={`border-b hover:bg-gray-50 ${i%2===0?'':'bg-gray-50/30'}`}>
+                        <td className="px-4 py-3 font-medium">{c.company_name}</td>
+                        <td className="px-4 py-3 text-gray-500 hidden md:table-cell">{c.email || '—'}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <button onClick={() => { setEditingUser(c); setEditingType('company'); setEditForm({...c, password:''}) }}
+                              className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-lg hover:bg-blue-200">✏️ Edit</button>
+                            <button onClick={() => deleteRecord('companies', c.id, c.company_name)}
+                              className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-lg hover:bg-red-200">🗑️ Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/* Consultants */}
+              <div className="bg-white rounded-2xl border overflow-hidden shadow-sm">
+                <div className="px-5 py-4 border-b bg-gray-50 flex items-center gap-2">
+                  <span className="text-lg">🧑‍💼</span>
+                  <h3 className="font-bold text-gray-800">Consultants ({consultants.length})</h3>
+                </div>
+                <table className="w-full text-sm">
+                  <thead><tr className="bg-gray-50 border-b">
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Name</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">Email</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Actions</th>
+                  </tr></thead>
+                  <tbody>
+                    {consultants.map((c, i) => (
+                      <tr key={c.id} className={`border-b hover:bg-gray-50 ${i%2===0?'':'bg-gray-50/30'}`}>
+                        <td className="px-4 py-3 font-medium">{c.name}</td>
+                        <td className="px-4 py-3 text-gray-500 hidden md:table-cell">{c.email || '—'}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <button onClick={() => { setEditingUser(c); setEditingType('consultant'); setEditForm({...c, password:''}) }}
+                              className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-lg hover:bg-blue-200">✏️ Edit</button>
+                            <button onClick={() => deleteRecord('consultants', c.id, c.name)}
+                              className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-lg hover:bg-red-200">🗑️ Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* EDIT MODAL */}
+          {editingUser && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between p-6 border-b">
+                  <h3 className="text-lg font-bold">
+                    {editingType === 'new_user' ? '➕ Create New User' :
+                     editingType === 'candidate' ? '✏️ Edit Candidate' :
+                     editingType === 'company' ? '✏️ Edit Company' : '✏️ Edit Consultant'}
+                  </h3>
+                  <button onClick={() => { setEditingUser(null); setEditForm({}) }}
+                    className="text-gray-400 hover:text-gray-600 text-2xl font-bold">×</button>
+                </div>
+                <div className="p-6 space-y-4">
+                  {/* Role selector for new user */}
+                  {editingType === 'new_user' && (
+                    <div>
+                      <label className="text-xs font-semibold text-gray-500 block mb-1">Role*</label>
+                      <select value={editForm.role || 'candidate'}
+                        onChange={e => setEditForm(f => ({...f, role: e.target.value}))}
+                        className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="candidate">Candidate</option>
+                        <option value="company">Company</option>
+                        <option value="consultant">Consultant</option>
+                        <option value="staff">Staff / Admin</option>
+                      </select>
+                    </div>
+                  )}
+                  {/* Name */}
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 block mb-1">
+                      {editingType === 'company' ? 'Company Name*' : 'Full Name*'}
+                    </label>
+                    <input value={editingType === 'company' ? (editForm.company_name || '') : (editForm.name || '')}
+                      onChange={e => setEditForm(f => editingType === 'company' ? {...f, company_name: e.target.value} : {...f, name: e.target.value})}
+                      className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                      placeholder="Enter name" />
+                  </div>
+                  {/* Email */}
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 block mb-1">Email</label>
+                    <input value={editForm.email || ''} onChange={e => setEditForm(f => ({...f, email: e.target.value}))}
+                      className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                      placeholder="Enter email" type="email" />
+                  </div>
+                  {/* Phone */}
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 block mb-1">Phone</label>
+                    <input value={editForm.phone || ''} onChange={e => setEditForm(f => ({...f, phone: e.target.value}))}
+                      className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                      placeholder="Enter phone" />
+                  </div>
+                  {/* Candidate specific */}
+                  {(editingType === 'candidate' || editingType === 'new_user') && (
+                    <>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-500 block mb-1">Job Title</label>
+                        <input value={editForm.job_title || ''} onChange={e => setEditForm(f => ({...f, job_title: e.target.value}))}
+                          className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                          placeholder="e.g. Software Engineer" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-500 block mb-1">Experience (years)</label>
+                        <input value={editForm.experience_years || ''} onChange={e => setEditForm(f => ({...f, experience_years: e.target.value}))}
+                          className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                          placeholder="e.g. 3" type="number" />
+                      </div>
+                    </>
+                  )}
+                  {/* Password */}
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 block mb-1">
+                      {editingType === 'new_user' ? 'Password*' : 'New Password (optional)'}
+                    </label>
+                    <input value={editForm.password || ''} onChange={e => setEditForm(f => ({...f, password: e.target.value}))}
+                      className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                      placeholder="Enter password" type="password" />
+                  </div>
+                  {/* Status */}
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 block mb-1">Status</label>
+                    <select value={editForm.status || 'active'} onChange={e => setEditForm(f => ({...f, status: e.target.value}))}
+                      className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                      <option value="active">✅ Active</option>
+                      <option value="inactive">❌ Inactive</option>
+                      <option value="suspended">🚫 Suspended</option>
+                    </select>
+                  </div>
+                  {/* Permissions - only for staff/consultant */}
+                  {(editingType === 'consultant' || (editingType === 'new_user' && editForm.role === 'staff')) && (
+                    <div>
+                      <label className="text-xs font-semibold text-gray-500 block mb-2">🔐 Permissions</label>
+                      <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+                        {[
+                          ['view_candidates','View Candidates'],
+                          ['edit_candidates','Edit Candidates'],
+                          ['delete_candidates','Delete Candidates'],
+                          ['view_companies','View Companies'],
+                          ['edit_companies','Edit Companies'],
+                          ['view_jobs','View Jobs'],
+                          ['edit_jobs','Edit Jobs'],
+                          ['bulk_upload','Bulk Upload'],
+                          ['manage_users','Manage Users'],
+                        ].map(([key, label]) => (
+                          <label key={key} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-100 rounded-lg px-2 py-1">
+                            <input type="checkbox"
+                              checked={editForm.permissions?.[key] || false}
+                              onChange={e => setEditForm(f => ({...f, permissions: {...(f.permissions||{}), [key]: e.target.checked}}))}
+                              className="w-4 h-4 accent-blue-600" />
+                            <span>{label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-3 p-6 border-t">
+                  <button onClick={() => { setEditingUser(null); setEditForm({}) }}
+                    className="flex-1 py-2 rounded-xl border text-sm font-semibold text-gray-600 hover:bg-gray-50">
+                    Cancel
+                  </button>
+                  <button onClick={saveEdit}
+                    className="flex-1 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">
+                    💾 Save Changes
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
