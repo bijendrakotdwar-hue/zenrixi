@@ -279,14 +279,13 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
     try {
       const skillsArray = job.skills.split(',').map(s => s.trim()).filter(Boolean)
       const res = await fetch(`${SUPABASE_URL}/rest/v1/jobs`, {
-        method: 'POST', headers: { ...h, 'Prefer': 'return=representation', 'Resolution': 'merge-duplicates' },
+        method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' },
         body: JSON.stringify({ company_id: company.id, title: job.title, description: job.description, required_skills: skillsArray, min_experience: parseInt(job.experience)||0, status: 'active', location: job.location||null, salary: job.salary||null })
       })
       if (!res.ok) {
         const errData = await res.json()
         throw new Error('Job post failed: ' + JSON.stringify(errData))
       }
-      const newJob = await res.json()
       setJob({ title:'', description:'', skills:'', experience:'0', location:'', salary:'' })
       try {
         await fetch('/api/linkedin-post', {
@@ -294,7 +293,7 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
           body: JSON.stringify({ title: job.title, company_name: company.company_name, location: job.location||'India', skills: job.skills, experience: job.experience })
         })
       } catch(e) { console.log('LinkedIn:', e) }
-      await runAIMatching(newJob[0], newJob[0].id, candidates)
+      // AI matching will run on next data load
       await loadData(company.id)
       setTab('candidates')
       alert('Job posted! AI matching complete!')
