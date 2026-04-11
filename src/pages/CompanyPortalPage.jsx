@@ -210,30 +210,16 @@ const CompanyPortalPage = () => {
   }
 
   const runAIMatching = async (jobData, jobId, allCandidates) => {
-    for (const candidate of allCandidates) {
-      try {
-        const prompt = `You are an HR expert. Score this candidate for the job.
-Return ONLY valid JSON: {"score": 85, "recommendation": "shortlist", "reason": "Strong match"}
-recommendation must be: shortlist, maybe, or reject
-CANDIDATE: ${candidate.name}, ${candidate.job_title||''}, ${candidate.experience_years||0} years exp
-JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp: ${jobData.min_experience} years`
-        const aiRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${import.meta.env.VITE_GROQ_KEY}` },
-          body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: prompt }], max_tokens: 150 })
+    try {
+      await fetch('/api/ai-matching', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobData, jobId, candidates: allCandidates,
+          supabaseUrl: SUPABASE_URL, supabaseKey: SUPABASE_KEY
         })
-        const aiData = await aiRes.json()
-        const text = aiData.choices?.[0]?.message?.content || '{}'
-        const result = JSON.parse(text.replace(/```json|```/g, '').trim())
-        const existCheck = await fetch(`${SUPABASE_URL}/rest/v1/matches?candidate_id=eq.${candidate.id}&job_id=eq.${jobId}`, { headers: h })
-        const existData = await existCheck.json()
-        if (existData.length > 0) continue
-        await fetch(`${SUPABASE_URL}/rest/v1/matches`, {
-          method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' },
-          body: JSON.stringify({ candidate_id: candidate.id, job_id: jobId, ai_score: result.score||0, status: result.recommendation||'maybe', match_reason: result.reason||'' })
-        })
-      } catch(e) { console.error('AI error:', e) }
-    }
+      });
+    } catch(e) { console.error('AI matching error:', e); }
   }
 
   const deleteJob = async (jobId) => {
