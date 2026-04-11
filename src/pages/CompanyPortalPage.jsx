@@ -279,8 +279,8 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
     try {
       const skillsArray = job.skills.split(',').map(s => s.trim()).filter(Boolean)
       const res = await fetch(`${SUPABASE_URL}/rest/v1/jobs`, {
-        method: 'POST', headers: { ...h, 'Prefer': 'return=representation' },
-        body: JSON.stringify({ company_id: company.id, title: job.title, description: job.description, required_skills: skillsArray, min_experience: parseInt(job.experience)||0, status: 'active' })
+        method: 'POST', headers: { ...h, 'Prefer': 'return=representation', 'Resolution': 'merge-duplicates' },
+        body: JSON.stringify({ company_id: company.id, title: job.title, description: job.description, required_skills: skillsArray, min_experience: parseInt(job.experience)||0, status: 'active', location: job.location||null, salary: job.salary||null })
       })
       if (!res.ok) throw new Error('Job post failed')
       const newJob = await res.json()
