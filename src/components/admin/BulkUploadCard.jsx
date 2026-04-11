@@ -37,7 +37,7 @@ async function uploadResume(file) {
     body: JSON.stringify({ extractedText, fileName: file.name }),
   });
   const json = await res.json();
-  if (!res.ok) throw new Error(json.error || 'Upload failed');
+  if (!res.ok) throw new Error(json.error || json.details?.message || 'Upload failed: ' + JSON.stringify(json));
   return json.candidate;
 }
 
@@ -65,6 +65,7 @@ export default function BulkUploadCard({ onCandidatesAdded }) {
     let successCount = 0;
     for (const item of pending) {
       updateFile(item.id, { status: STATUS.UPLOADING, message: 'Extracting text...' });
+      console.log('Processing file:', item.file.name, item.file.type, item.file.size);
       try {
         const candidate = await uploadResume(item.file);
         updateFile(item.id, { status: STATUS.SUCCESS, message: `Saved: ${candidate.full_name || candidate.email || 'Candidate'}` });
