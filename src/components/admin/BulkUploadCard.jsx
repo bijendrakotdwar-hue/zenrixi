@@ -1,39 +1,25 @@
 import { useState, useRef, useCallback } from 'react';
-import * as mammoth from 'mammoth';
-import * as pdfjsLib from 'pdfjs-dist';
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
 
 const STATUS = { PENDING:'pending', UPLOADING:'uploading', SUCCESS:'success', ERROR:'error' };
 const statusStyle = { pending:'bg-gray-100 text-gray-500', uploading:'bg-blue-50 text-blue-600', success:'bg-green-50 text-green-600', error:'bg-red-50 text-red-500' };
 const statusIcon  = { pending:'⏳', uploading:'🔄', success:'✅', error:'❌' };
 
-async function extractText(file) {
-  const arrayBuffer = await file.arrayBuffer();
-  if (file.name.endsWith('.pdf')) {
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let text = '';
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      text += content.items.map(item => item.str).join(' ') + '\n';
-    }
-    return text;
-  } else if (file.name.endsWith('.docx')) {
-    const result = await mammoth.extractRawText({ arrayBuffer });
-    return result.value;
-  }
-  throw new Error('Unsupported file type');
-}
-
+// Convert file to base64 and send to server for processing
 async function uploadResume(file) {
-  const extractedText = await extractText(file);
-  const res = await fetch('/api/bulk-upload-resumes', {
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const res = await fetch('/api/parse-and-save-resume', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ extractedText, fileName: file.name }),
+    body: JSON.stringify({ fileName: file.name, fileData: base64, fileType: file.type }),
   });
   const json = await res.json();
-  if (!res.ok) throw new Error(json.error || json.details?.message || 'Upload failed: ' + JSON.stringify(json));
+  if (!res.ok) throw new Error(json.error || 'Upload failed');
   return json.candidate;
 }
 
@@ -60,11 +46,10 @@ export default function BulkUploadCard({ onCandidatesAdded }) {
     setIsProcessing(true);
     let successCount = 0;
     for (const item of pending) {
-      updateFile(item.id, { status: STATUS.UPLOADING, message: 'Extracting text...' });
-      console.log('Processing file:', item.file.name, item.file.type, item.file.size);
+      updateFile(item.id, { status: STATUS.UPLOADING, message: 'Uploading & parsing...' });
       try {
         const candidate = await uploadResume(item.file);
-        updateFile(item.id, { status: STATUS.SUCCESS, message: `Saved: ${candidate.full_name || candidate.email || 'Candidate'}` });
+        updateFile(item.id, { status: STATUS.SUCCESS, message: `Saved: ${candidate?.name || 'Candidate'}` });
         successCount++;
       } catch (err) {
         updateFile(item.id, { status: STATUS.ERROR, message: err.message });
@@ -98,14 +83,12 @@ export default function BulkUploadCard({ onCandidatesAdded }) {
           </div>
         )}
       </div>
-
       <div
         onClick={() => fileInputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={(e) => { e.preventDefault(); setIsDragging(false); addFiles(e.dataTransfer.files); }}
-        className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all select-none
-          ${isDragging ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200 bg-gray-50 hover:border-indigo-300'}`}
+        className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all select-none ${isDragging ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200 bg-gray-50 hover:border-indigo-300'}`}
       >
         <div className="text-2xl mb-1">📂</div>
         <p className="text-sm font-medium text-gray-600">{isDragging ? 'Drop karo!' : 'Files drag करो या click करो'}</p>
@@ -113,7 +96,6 @@ export default function BulkUploadCard({ onCandidatesAdded }) {
         <input ref={fileInputRef} type="file" multiple accept=".pdf,.docx" className="hidden"
           onChange={(e) => addFiles(e.target.files)} />
       </div>
-
       {files.length > 0 && (
         <div className="mt-3 space-y-2 max-h-52 overflow-y-auto pr-1">
           {files.map(item => (
@@ -131,19 +113,14 @@ export default function BulkUploadCard({ onCandidatesAdded }) {
           ))}
         </div>
       )}
-
       {files.length > 0 && (
         <div className="flex gap-2 mt-3">
           <button onClick={processAll} disabled={isProcessing || pendingCount === 0}
-            className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all
-              ${isProcessing || pendingCount === 0
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm'}`}>
+            className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${isProcessing || pendingCount === 0 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm'}`}>
             {isProcessing ? '⏳ Processing...' : `🚀 Upload ${pendingCount} Resume${pendingCount !== 1 ? 's' : ''}`}
           </button>
           {!isProcessing && (
-            <button onClick={clearAll}
-              className="px-3 py-2 rounded-xl text-sm text-gray-400 hover:text-red-500 hover:bg-red-50">Clear</button>
+            <button onClick={clearAll} className="px-3 py-2 rounded-xl text-sm text-gray-400 hover:text-red-500 hover:bg-red-50">Clear</button>
           )}
         </div>
       )}
