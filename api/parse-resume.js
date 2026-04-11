@@ -2,7 +2,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   
   const { text } = req.body
-  const OPENAI_KEY = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_KEY
+  const OPENAI_KEY = process.env.GROQ_API_KEY
 
   const prompt = `Extract candidate information from this resume text. Return ONLY valid JSON:
 {
@@ -20,10 +20,10 @@ export default async function handler(req, res) {
 Resume: ${text.slice(0, 4000)}`
 
   try {
-    const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+    const aiRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_KEY}` },
-      body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: prompt }], max_tokens: 500 })
+      body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: prompt }], max_tokens: 500 })
     })
     const data = await aiRes.json()
     const raw = data.choices?.[0]?.message?.content || '{}'

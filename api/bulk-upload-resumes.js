@@ -1,5 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
-const OpenAI = require('openai');
+
 
 module.exports.config = { api: { bodyParser: { sizeLimit: '10mb' } } };
 
@@ -30,21 +30,19 @@ module.exports.default = async function handler(req, res) {
       return res.status(422).json({ error: 'Could not extract readable text from file' });
     }
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      temperature: 0.1,
-      messages: [
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.GROQ_API_KEY}` },
+      body: JSON.stringify({ model: 'llama-3.1-8b-instant', temperature: 0.1, messages: [
         {
           role: 'system',
           content: 'You are a resume parser. Return ONLY a valid JSON object, no markdown, no backticks, no explanation. Schema: {"full_name":"","email":null,"phone":null,"location":null,"current_title":null,"experience_years":0,"skills":[],"education":null,"summary":null}'
         },
         { role: 'user', content: extractedText.substring(0, 5000) }
-      ]
+      ]})
     });
-
-    const raw = (completion.choices[0].message.content || '{}').replace(/```json|```/g, '').trim();
+    const groqData = await groqRes.json();
+    const raw = (groqData.choices?.[0]?.message?.content || '{}').replace(/```json|```/g, '').trim();
     let parsed;
     try { parsed = JSON.parse(raw); }
     catch (e) { return res.status(500).json({ error: 'OpenAI JSON parse failed', raw }); }
