@@ -217,10 +217,10 @@ Return ONLY valid JSON: {"score": 85, "recommendation": "shortlist", "reason": "
 recommendation must be: shortlist, maybe, or reject
 CANDIDATE: ${candidate.name}, ${candidate.job_title||''}, ${candidate.experience_years||0} years exp
 JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp: ${jobData.min_experience} years`
-        const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        const aiRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_KEY}` },
-          body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: prompt }], max_tokens: 150 })
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${import.meta.env.VITE_GROQ_KEY}` },
+          body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: prompt }], max_tokens: 150 })
         })
         const aiData = await aiRes.json()
         const text = aiData.choices?.[0]?.message?.content || '{}'
