@@ -282,7 +282,10 @@ JOB: ${jobData.title}, Required: ${jobData.required_skills?.join(', ')}, Min exp
         method: 'POST', headers: { ...h, 'Prefer': 'return=representation', 'Resolution': 'merge-duplicates' },
         body: JSON.stringify({ company_id: company.id, title: job.title, description: job.description, required_skills: skillsArray, min_experience: parseInt(job.experience)||0, status: 'active', location: job.location||null, salary: job.salary||null })
       })
-      if (!res.ok) throw new Error('Job post failed')
+      if (!res.ok) {
+        const errData = await res.json()
+        throw new Error('Job post failed: ' + JSON.stringify(errData))
+      }
       const newJob = await res.json()
       setJob({ title:'', description:'', skills:'', experience:'0', location:'', salary:'' })
       try {
