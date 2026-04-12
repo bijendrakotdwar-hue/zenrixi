@@ -15,19 +15,24 @@ async function extractTextFromFile(file) {
   if (file.name.toLowerCase().endsWith('.pdf')) {
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const { getDocument, GlobalWorkerOptions } = await import('pdfjs-dist');
-      GlobalWorkerOptions.workerSrc = new URL(
-        'pdfjs-dist/build/pdf.worker.min.mjs',
-        import.meta.url
-      ).href;
-      const pdf = await getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+      const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+      const loadingTask = pdfjsLib.getDocument({ 
+        data: new Uint8Array(arrayBuffer),
+        useWorkerFetch: false,
+        isEvalSupported: false,
+        useSystemFonts: true,
+        disableAutoFetch: true,
+        disableStream: true
+      });
+      const pdf = await loadingTask.promise;
       let text = '';
-      for (let i = 1; i <= Math.min(pdf.numPages, 5); i++) {
+      for (let i = 1; i <= Math.min(pdf.numPages, 8); i++) {
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
         text += content.items.map(item => item.str).join(' ') + '\n';
       }
-      console.log('PDF extracted, chars:', text.length);
+      console.log('PDF extracted chars:', text.length, text.substring(0,100));
       return text;
     } catch(e) {
       console.error('PDF extract error:', e.message);
