@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   try {
     // Step 1: Upload file to Supabase Storage
     const fileBuffer = Buffer.from(fileData, 'base64');
-    const uniqueName = `${Date.now()}-${fileName}`;
+    const uniqueName = `${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
     
     const uploadRes = await fetch(`${supaUrl}/storage/v1/object/resumes/${uniqueName}`, {
       method: 'POST',
@@ -25,9 +25,14 @@ export default async function handler(req, res) {
       body: fileBuffer
     });
 
+    const uploadData = await uploadRes.json();
+    console.log('Storage upload status:', uploadRes.status, JSON.stringify(uploadData));
+
     const resumeUrl = uploadRes.ok 
       ? `${supaUrl}/storage/v1/object/public/resumes/${uniqueName}`
       : null;
+
+    if (!uploadRes.ok) console.error('Storage upload failed:', uploadData);
 
     // Step 2: Parse with Groq
     const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -46,7 +51,7 @@ export default async function handler(req, res) {
           },
           { 
             role: 'user', 
-            content: `Parse this resume filename and extract info: ${fileName}. Base64 preview: ${fileData.substring(0, 2000)}`
+            content: `Parse this resume. Filename: ${fileName}. Content preview (base64): ${fileData.substring(0, 2000)}`
           }
         ]
       })
@@ -59,7 +64,7 @@ export default async function handler(req, res) {
     try { parsed = JSON.parse(raw); }
     catch (e) { parsed = { full_name: fileName.replace(/\.pdf|\.docx/gi, ''), skills: [] }; }
 
-    // Step 3: Save to candidates table with resume_url
+    // Step 3: Save to candidates table
     const dbRes = await fetch(`${supaUrl}/rest/v1/candidates`, {
       method: 'POST',
       headers: {
@@ -90,7 +95,9 @@ export default async function handler(req, res) {
     return res.status(200).json({ 
       success: true, 
       candidate: Array.isArray(dbData) ? dbData[0] : dbData,
-      resume_url: resumeUrl
+      resume_url: resumeUrl,
+      storage_status: uploadRes.status,
+      storage_response: uploadData
     });
 
   } catch (err) {
