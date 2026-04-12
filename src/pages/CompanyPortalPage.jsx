@@ -37,7 +37,7 @@ const CompanyPortalPage = () => {
   const [showOfferModal, setShowOfferModal] = useState(false)
   const [interviewData, setInterviewData] = useState({ scheduled_at: '', duration_minutes: 60, interview_type: 'video', meeting_link: '', interviewer_name: '', notes: '' })
   const [offerData, setOfferData] = useState({ salary: '', joining_date: '', designation: '', department: '' })
-  const [job, setJob] = useState({ title: '', description: '', skills: '', experience: '0', location: '', salary: '' })
+  const [job, setJob] = useState({ title: '', description: '', skills: '', experience: '0', location: '', salary: '', department: '', qualification: '', industry: 'Pharmaceutical', job_type: 'Full Time' })
   const [filterJob, setFilterJob] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterExp, setFilterExp] = useState('all')
@@ -267,7 +267,7 @@ const CompanyPortalPage = () => {
       const skillsArray = job.skills.split(',').map(s => s.trim()).filter(Boolean)
       const res = await fetch(`${SUPABASE_URL}/rest/v1/jobs`, {
         method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ company_id: company.id, title: job.title, description: job.description, required_skills: skillsArray, min_experience: parseInt(job.experience)||0, status: 'active', location: job.location||null, salary: job.salary||null })
+        body: JSON.stringify({ company_id: company.id, title: job.title, description: job.description, required_skills: skillsArray, min_experience: parseInt(job.experience)||0, status: 'active', location: job.location||null, salary: job.salary||null, department: job.department||null, qualification: job.qualification||null, industry: job.industry||null, job_type: job.job_type||null })
       })
       if (!res.ok) {
         const errData = await res.json()
@@ -561,14 +561,38 @@ const CompanyPortalPage = () => {
                     <input value={job.title} onChange={e => setJob({...job, title:e.target.value})} placeholder="e.g. Senior React Developer"
                       className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
+                  <div>
+                    <label className="text-sm font-semibold block mb-1">Department* <span className="font-normal text-gray-400">(e.g. QA, Production, Maintenance)</span></label>
+                    <input value={job.department} onChange={e => setJob({...job, department:e.target.value})} placeholder="e.g. Quality Assurance, Production, R&D"
+                      className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold block mb-1">Industry*</label>
+                    <select value={job.industry} onChange={e => setJob({...job, industry:e.target.value})}
+                      className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <option>Pharmaceutical</option>
+                      <option>Manufacturing</option>
+                      <option>IT / Software</option>
+                      <option>Healthcare</option>
+                      <option>FMCG</option>
+                      <option>Chemical</option>
+                      <option>Automobile</option>
+                      <option>Other</option>
+                    </select>
+                  </div>
                   <div className="sm:col-span-2">
                     <label className="text-sm font-semibold block mb-1">Job Description*</label>
-                    <textarea value={job.description} onChange={e => setJob({...job, description:e.target.value})} rows={4} placeholder="Role, responsibilities..."
+                    <textarea value={job.description} onChange={e => setJob({...job, description:e.target.value})} rows={4} placeholder="Role, responsibilities, key duties..."
                       className="w-full border rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
                   </div>
                   <div className="sm:col-span-2">
                     <label className="text-sm font-semibold block mb-1">Required Skills* <span className="font-normal text-gray-400">(comma separated)</span></label>
-                    <input value={job.skills} onChange={e => setJob({...job, skills:e.target.value})} placeholder="React, Node.js, JavaScript"
+                    <input value={job.skills} onChange={e => setJob({...job, skills:e.target.value})} placeholder="e.g. HPLC, GC, Documentation, GMP"
+                      className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold block mb-1">Required Qualification*</label>
+                    <input value={job.qualification} onChange={e => setJob({...job, qualification:e.target.value})} placeholder="e.g. B.Pharm, M.Pharm, B.Tech, MBA"
                       className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <div>
@@ -577,13 +601,23 @@ const CompanyPortalPage = () => {
                       className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <div>
+                    <label className="text-sm font-semibold block mb-1">Job Type</label>
+                    <select value={job.job_type} onChange={e => setJob({...job, job_type:e.target.value})}
+                      className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <option>Full Time</option>
+                      <option>Part Time</option>
+                      <option>Contract</option>
+                      <option>Internship</option>
+                    </select>
+                  </div>
+                  <div>
                     <label className="text-sm font-semibold block mb-1">Location</label>
-                    <input value={job.location} onChange={e => setJob({...job, location:e.target.value})} placeholder="Delhi / Remote"
+                    <input value={job.location} onChange={e => setJob({...job, location:e.target.value})} placeholder="e.g. Dehradun, Roorkee, Remote"
                       className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <div>
                     <label className="text-sm font-semibold block mb-1">Salary (CTC)</label>
-                    <input value={job.salary} onChange={e => setJob({...job, salary:e.target.value})} placeholder="e.g. 8-12 LPA"
+                    <input value={job.salary} onChange={e => setJob({...job, salary:e.target.value})} placeholder="e.g. 3-5 LPA"
                       className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                 </div>

@@ -20,9 +20,13 @@ CANDIDATE:
 
 JOB REQUIREMENTS:
 - Title: ${jobData.title}
+- Department: ${jobData.department || 'Not specified'}
+- Industry: ${jobData.industry || 'Not specified'}
+- Required Qualification: ${jobData.qualification || 'Not specified'}
 - Required Skills: ${Array.isArray(jobData.required_skills) ? jobData.required_skills.join(', ') : jobData.required_skills || 'Not specified'}
 - Min Experience: ${jobData.min_experience || 0} years
 - Location: ${jobData.location || 'Not specified'}
+- Job Type: ${jobData.job_type || 'Full Time'}
 - Description: ${jobData.description ? jobData.description.substring(0, 400) : 'Not specified'}
 
 STRICT SCORING RULES:
