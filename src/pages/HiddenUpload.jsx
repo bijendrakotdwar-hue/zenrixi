@@ -41,8 +41,6 @@ export default function HiddenUpload() {
     const results = [];
     for (let i = 0; i < bulkFiles.length; i++) {
       const file = bulkFiles[i];
-      const formData = new FormData();
-      formData.append("resume", file);
       results.push({ name: file.name, status: "uploading" });
       setBulkResults([...results]);
       try {
