@@ -679,7 +679,7 @@ const CompanyPortalPage = () => {
                   <p className="text-gray-500">No candidates yet. Post a job first!</p>
                 </div>
               ) : (() => {
-                const filtered = matches.filter(m => {
+                const filtered = matches.filter(m => m.status !== 'Rejected').filter(m => {
                   const exp = m.candidates?.experience_years || 0
                   const nameMatch = !searchName || m.candidates?.name?.toLowerCase().includes(searchName.toLowerCase())
                   const jobMatch = filterJob === 'all' || m.job_id === filterJob
