@@ -997,6 +997,17 @@ const CompanyPortalPage = () => {
                 </div>
               )}
 
+              {/* Resume file info */}
+              {selectedProfile.candidates?.resume_file_name && (
+                <div className="mb-4 bg-yellow-50 rounded-xl p-3 flex items-center gap-2">
+                  <span className="text-lg">📄</span>
+                  <div>
+                    <p className="text-xs font-semibold text-yellow-800">Resume File</p>
+                    <p className="text-xs text-yellow-700">{selectedProfile.candidates.resume_file_name}</p>
+                  </div>
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex gap-2 flex-wrap pt-2 border-t">
                 {selectedProfile.candidates?.resume_url && (
