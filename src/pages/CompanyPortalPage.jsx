@@ -43,6 +43,7 @@ const CompanyPortalPage = () => {
   const [filterExp, setFilterExp] = useState('all')
   const [searchName, setSearchName] = useState('')
   const [kanbanJob, setKanbanJob] = useState('all')
+  const [selectedProfile, setSelectedProfile] = useState(null)
 
   React.useEffect(() => {
     const saved = localStorage.getItem('company_session')
@@ -694,7 +695,7 @@ const CompanyPortalPage = () => {
                 ) : (
                 <div className="space-y-3">
                   {filtered.map(match => (
-                    <div key={match.id} className="bg-white rounded-2xl border p-5 hover:shadow-md transition-all">
+                    <div key={match.id} className="bg-white rounded-2xl border p-5 hover:shadow-md transition-all cursor-pointer" onClick={() => setSelectedProfile(match)}>
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center font-bold text-white text-lg">
@@ -915,6 +916,116 @@ const CompanyPortalPage = () => {
           )}
         </main>
       </div>
+
+      {/* Candidate Profile Modal */}
+      {selectedProfile && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedProfile(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white z-10">
+              <h3 className="text-lg font-bold">👤 Candidate Profile</h3>
+              <button onClick={() => setSelectedProfile(null)} className="text-gray-400 hover:text-gray-600 text-2xl font-bold">×</button>
+            </div>
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center font-bold text-white text-2xl flex-shrink-0">
+                  {selectedProfile.candidates?.name?.charAt(0)?.toUpperCase()}
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">{selectedProfile.candidates?.name}</h2>
+                  <p className="text-gray-500 text-sm">{selectedProfile.candidates?.job_title || selectedProfile.candidates?.current_title || 'Professional'}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{selectedProfile.ai_score}% match</span>
+                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{selectedProfile.candidates?.experience_years || 0} yrs exp</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Info */}
+              <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-2">
+                <h4 className="font-semibold text-sm text-gray-700 mb-3">📞 Contact Information</h4>
+                {selectedProfile.candidates?.email ? (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-gray-400">✉️</span>
+                    <a href={`mailto:${selectedProfile.candidates.email}`} className="text-blue-600 hover:underline">{selectedProfile.candidates.email}</a>
+                  </div>
+                ) : <p className="text-sm text-gray-400">Email not available</p>}
+                {selectedProfile.candidates?.phone ? (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-gray-400">📱</span>
+                    <a href={`tel:${selectedProfile.candidates.phone}`} className="text-blue-600 hover:underline">{selectedProfile.candidates.phone}</a>
+                  </div>
+                ) : <p className="text-sm text-gray-400">Phone not available</p>}
+                {selectedProfile.candidates?.location && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-gray-400">📍</span>
+                    <span>{selectedProfile.candidates.location}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Job Applied For */}
+              <div className="bg-blue-50 rounded-xl p-4 mb-4">
+                <h4 className="font-semibold text-sm text-blue-700 mb-1">💼 Applied For</h4>
+                <p className="text-sm font-medium">{selectedProfile.jobs?.title}</p>
+                <p className="text-xs text-blue-500 mt-1">{selectedProfile.match_reason}</p>
+              </div>
+
+              {/* Skills */}
+              {selectedProfile.candidates?.parsed_skills?.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="font-semibold text-sm text-gray-700 mb-2">🛠️ Skills</h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedProfile.candidates.parsed_skills.map((s, i) => (
+                      <span key={i} className="text-xs bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full">{s}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Education & Summary */}
+              {selectedProfile.candidates?.education && (
+                <div className="mb-4">
+                  <h4 className="font-semibold text-sm text-gray-700 mb-1">🎓 Education</h4>
+                  <p className="text-sm text-gray-600">{selectedProfile.candidates.education}</p>
+                </div>
+              )}
+              {selectedProfile.candidates?.summary && (
+                <div className="mb-4">
+                  <h4 className="font-semibold text-sm text-gray-700 mb-1">📝 Summary</h4>
+                  <p className="text-sm text-gray-600">{selectedProfile.candidates.summary}</p>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2 flex-wrap pt-2 border-t">
+                {selectedProfile.candidates?.resume_url && (
+                  <a href={selectedProfile.candidates.resume_url} target="_blank" rel="noreferrer"
+                    className="flex-1 text-center py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 flex items-center justify-center gap-1">
+                    <Download className="w-4 h-4" /> Download Resume
+                  </a>
+                )}
+                {selectedProfile.candidates?.email && (
+                  <a href={`mailto:${selectedProfile.candidates.email}`}
+                    className="flex-1 text-center py-2 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 flex items-center justify-center gap-1">
+                    <Mail className="w-4 h-4" /> Send Email
+                  </a>
+                )}
+                {selectedProfile.candidates?.phone && (
+                  <a href={`tel:${selectedProfile.candidates.phone}`}
+                    className="flex-1 text-center py-2 bg-gray-600 text-white rounded-xl text-sm font-semibold hover:bg-gray-700 flex items-center justify-center gap-1">
+                    <Phone className="w-4 h-4" /> Call
+                  </a>
+                )}
+                <button onClick={() => { setSelectedCandidate(selectedProfile); setShowInterviewModal(true); setSelectedProfile(null) }}
+                  className="flex-1 text-center py-2 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 flex items-center justify-center gap-1">
+                  <Calendar className="w-4 h-4" /> Interview
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Interview Schedule Modal */}
       {showInterviewModal && (
