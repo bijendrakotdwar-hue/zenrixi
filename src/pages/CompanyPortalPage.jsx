@@ -39,6 +39,73 @@ const CompanyPortalPage = () => {
   const [offerData, setOfferData] = useState({ salary: '', joining_date: '', designation: '', department: '' })
   const [job, setJob] = useState({ title: '', description: '', skills: '', experience: '0', location: '', salary: '', department: '', qualification: '', industry: 'Pharmaceutical', job_type: 'Full Time' })
   const [filterJob, setFilterJob] = useState('all')
+  const [skillInput, setSkillInput] = useState('')
+  const [skillSuggestions, setSkillSuggestions] = useState([])
+  const [selectedSkills, setSelectedSkills] = useState([])
+
+  const ALL_SKILLS = [
+    // Pharma & QA
+    'HPLC','GC','GMP','GLP','GDP','SOP','CAPA','OOS','OOT','Validation','Qualification',
+    'Microbiology','Analytical Chemistry','Stability Studies','Regulatory Affairs',
+    'Pharmacovigilance','Clinical Research','Drug Safety','Formulation','Documentation',
+    'Audit','Risk Assessment','Change Control','Batch Record Review','ICH Guidelines',
+    'WHO Guidelines','FDA Compliance','EU GMP','ISO 9001','ISO 14001','ISO 45001',
+    // Engineering & Maintenance
+    'HVAC','ETP','WTP','Boiler','Autoclave','Compressor','PLC','SCADA','DCS',
+    'Electrical Maintenance','Mechanical Maintenance','Instrumentation','Calibration',
+    'Preventive Maintenance','Breakdown Maintenance','AutoCAD','SAP PM',
+    // Production
+    'Manufacturing','Packaging','Tablet Manufacturing','Injection Manufacturing',
+    'Liquid Manufacturing','Ointment Manufacturing','GMP Documentation',
+    // IT & Software
+    'Python','JavaScript','React','Node.js','Java','C++','C#','PHP','SQL','MySQL',
+    'PostgreSQL','MongoDB','AWS','Azure','GCP','Docker','Kubernetes','Git',
+    'Machine Learning','Deep Learning','Data Science','Power BI','Tableau',
+    'SAP','Oracle','Salesforce','Excel','VBA','Power Apps',
+    // Business & HR
+    'Recruitment','Talent Acquisition','Payroll','Performance Management',
+    'Training & Development','HRIS','Labor Law','Compensation & Benefits',
+    'Sales','Marketing','Business Development','CRM','Digital Marketing',
+    'SEO','Social Media Marketing','Content Marketing','B2B Sales','B2C Sales',
+    // Finance
+    'Accounting','Tally','GST','TDS','Financial Reporting','Budgeting',
+    'Accounts Payable','Accounts Receivable','Audit','Cost Accounting',
+    // Supply Chain
+    'Supply Chain Management','Inventory Management','Procurement','Vendor Management',
+    'Import Export','Logistics','Warehouse Management','SAP MM','SAP SD',
+    // Soft Skills
+    'Leadership','Team Management','Communication','Problem Solving','Project Management',
+    'MS Office','Presentation Skills','Negotiation','Customer Service'
+  ]
+
+  const handleSkillInput = (val) => {
+    setSkillInput(val)
+    if (val.length > 1) {
+      const filtered = ALL_SKILLS.filter(s => 
+        s.toLowerCase().includes(val.toLowerCase()) && 
+        !selectedSkills.includes(s)
+      ).slice(0, 8)
+      setSkillSuggestions(filtered)
+    } else {
+      setSkillSuggestions([])
+    }
+  }
+
+  const addSkill = (skill) => {
+    if (!selectedSkills.includes(skill)) {
+      const newSkills = [...selectedSkills, skill]
+      setSelectedSkills(newSkills)
+      setJob({...job, skills: newSkills.join(', ')})
+    }
+    setSkillInput('')
+    setSkillSuggestions([])
+  }
+
+  const removeSkill = (skill) => {
+    const newSkills = selectedSkills.filter(s => s !== skill)
+    setSelectedSkills(newSkills)
+    setJob({...job, skills: newSkills.join(', ')})
+  }
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterExp, setFilterExp] = useState('all')
   const [searchName, setSearchName] = useState('')
@@ -633,9 +700,38 @@ const CompanyPortalPage = () => {
                       className="w-full border rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="text-sm font-semibold block mb-1">Required Skills* <span className="font-normal text-gray-400">(comma separated)</span></label>
-                    <input value={job.skills} onChange={e => setJob({...job, skills:e.target.value})} placeholder="e.g. HPLC, GC, Documentation, GMP"
-                      className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <label className="text-sm font-semibold block mb-1">Required Skills*</label>
+                    {/* Selected Skills Tags */}
+                    {selectedSkills.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {selectedSkills.map(skill => (
+                          <span key={skill} className="flex items-center gap-1 bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full text-xs font-medium">
+                            {skill}
+                            <button onClick={() => removeSkill(skill)} className="text-blue-400 hover:text-red-500 font-bold text-sm leading-none">×</button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {/* Skill Search Input */}
+                    <div className="relative">
+                      <input 
+                        value={skillInput} 
+                        onChange={e => handleSkillInput(e.target.value)}
+                        onKeyDown={e => { if(e.key === 'Enter' && skillInput.trim()) { e.preventDefault(); addSkill(skillInput.trim()); } }}
+                        placeholder="Type to search skills... (e.g. HPLC, GMP, Python)"
+                        className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      {skillSuggestions.length > 0 && (
+                        <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto">
+                          {skillSuggestions.map(skill => (
+                            <button key={skill} onClick={() => addSkill(skill)}
+                              className="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 hover:text-blue-700 transition-colors border-b last:border-0">
+                              {skill}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">Type skill name ya Enter dabao custom skill add karne ke liye</p>
                   </div>
                   <div>
                     <label className="text-sm font-semibold block mb-1">Required Qualification*</label>
