@@ -26,7 +26,12 @@ JOB REQUIREMENTS:
 - Description: ${jobData.description ? jobData.description.substring(0, 400) : 'Not specified'}
 
 STRICT SCORING RULES:
-- If candidate's field is completely different from job (e.g., software engineer for pharma job), overall score must be below 30
+- MOST IMPORTANT: Check if candidate's department/field matches job department
+  * QA/Quality person for Maintenance job = score below 25
+  * Production person for QA job = score below 35  
+  * Pharma person for IT job = score below 20
+  * If field is COMPLETELY different, overall score MUST be below 30
+- If candidate has NO relevant skills for job, skills score must be 0-2
 - Education: Score based on relevance of degree to job field (0-10)
 - Experience: Score based on years AND relevance of experience to job (0-10)  
 - Skills: Score based on how many required skills candidate has (0-10)
