@@ -78,7 +78,22 @@ export default async function handler(req, res) {
         messages: [
           {
             role: 'system',
-            content: 'You are a resume parser. Extract information from resume text and return ONLY valid JSON, no markdown, no backticks. Schema: {"full_name":"","email":null,"phone":null,"location":null,"current_title":null,"experience_years":0,"skills":[],"education":null,"summary":null}'
+            content: `You are an expert resume parser. Extract ALL information from the resume text carefully.
+Return ONLY a valid JSON object with NO markdown, NO backticks, NO explanation.
+Look carefully for: name, email addresses (contain @), phone numbers (10 digits or with +91), job titles, years of experience, skills/technologies, education degrees.
+
+JSON Schema:
+{
+  "full_name": "exact name from resume",
+  "email": "email@example.com or null",
+  "phone": "phone number or null", 
+  "location": "city/state or null",
+  "current_title": "current job title or null",
+  "experience_years": 0,
+  "skills": ["skill1", "skill2"],
+  "education": "degree and institution or null",
+  "summary": "2-3 line professional summary or null"
+}`
           },
           { 
             role: 'user', 
