@@ -106,6 +106,73 @@ const CompanyPortalPage = () => {
     setSelectedSkills(newSkills)
     setJob({...job, skills: newSkills.join(', ')})
   }
+  const [skillInput, setSkillInput] = useState('')
+  const [skillSuggestions, setSkillSuggestions] = useState([])
+  const [selectedSkills, setSelectedSkills] = useState([])
+
+  const ALL_SKILLS = [
+    // Pharma & QA
+    'HPLC','GC','GMP','GLP','GDP','SOP','CAPA','OOS','OOT','Validation','Qualification',
+    'Microbiology','Analytical Chemistry','Stability Studies','Regulatory Affairs',
+    'Pharmacovigilance','Clinical Research','Drug Safety','Formulation','Documentation',
+    'Audit','Risk Assessment','Change Control','Batch Record Review','ICH Guidelines',
+    'WHO Guidelines','FDA Compliance','EU GMP','ISO 9001','ISO 14001','ISO 45001',
+    // Engineering & Maintenance
+    'HVAC','ETP','WTP','Boiler','Autoclave','Compressor','PLC','SCADA','DCS',
+    'Electrical Maintenance','Mechanical Maintenance','Instrumentation','Calibration',
+    'Preventive Maintenance','Breakdown Maintenance','AutoCAD','SAP PM',
+    // Production
+    'Manufacturing','Packaging','Tablet Manufacturing','Injection Manufacturing',
+    'Liquid Manufacturing','Ointment Manufacturing','GMP Documentation',
+    // IT & Software
+    'Python','JavaScript','React','Node.js','Java','C++','C#','PHP','SQL','MySQL',
+    'PostgreSQL','MongoDB','AWS','Azure','GCP','Docker','Kubernetes','Git',
+    'Machine Learning','Deep Learning','Data Science','Power BI','Tableau',
+    'SAP','Oracle','Salesforce','Excel','VBA','Power Apps',
+    // Business & HR
+    'Recruitment','Talent Acquisition','Payroll','Performance Management',
+    'Training & Development','HRIS','Labor Law','Compensation & Benefits',
+    'Sales','Marketing','Business Development','CRM','Digital Marketing',
+    'SEO','Social Media Marketing','Content Marketing','B2B Sales','B2C Sales',
+    // Finance
+    'Accounting','Tally','GST','TDS','Financial Reporting','Budgeting',
+    'Accounts Payable','Accounts Receivable','Audit','Cost Accounting',
+    // Supply Chain
+    'Supply Chain Management','Inventory Management','Procurement','Vendor Management',
+    'Import Export','Logistics','Warehouse Management','SAP MM','SAP SD',
+    // Soft Skills
+    'Leadership','Team Management','Communication','Problem Solving','Project Management',
+    'MS Office','Presentation Skills','Negotiation','Customer Service'
+  ]
+
+  const handleSkillInput = (val) => {
+    setSkillInput(val)
+    if (val.length > 1) {
+      const filtered = ALL_SKILLS.filter(s => 
+        s.toLowerCase().includes(val.toLowerCase()) && 
+        !selectedSkills.includes(s)
+      ).slice(0, 8)
+      setSkillSuggestions(filtered)
+    } else {
+      setSkillSuggestions([])
+    }
+  }
+
+  const addSkill = (skill) => {
+    if (!selectedSkills.includes(skill)) {
+      const newSkills = [...selectedSkills, skill]
+      setSelectedSkills(newSkills)
+      setJob({...job, skills: newSkills.join(', ')})
+    }
+    setSkillInput('')
+    setSkillSuggestions([])
+  }
+
+  const removeSkill = (skill) => {
+    const newSkills = selectedSkills.filter(s => s !== skill)
+    setSelectedSkills(newSkills)
+    setJob({...job, skills: newSkills.join(', ')})
+  }
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterExp, setFilterExp] = useState('all')
   const [searchName, setSearchName] = useState('')
