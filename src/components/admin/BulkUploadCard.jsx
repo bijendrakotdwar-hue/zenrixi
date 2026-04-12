@@ -23,26 +23,47 @@ async function extractTextFromFile(file) {
       const arrayBuffer = await file.arrayBuffer();
       const bytes = new Uint8Array(arrayBuffer);
       
-      // Convert to string for regex extraction
+      // Try text extraction first
       let rawStr = '';
       for (let i = 0; i < bytes.length; i++) {
         rawStr += String.fromCharCode(bytes[i]);
       }
-      
-      // Extract text from PDF parentheses notation
       const matches = rawStr.match(/\(([^\\()]{2,500})\)/g) || [];
-      const text1 = matches
-        .map(m => m.slice(1, -1))
-        .filter(t => /[a-zA-Z]{2,}/.test(t))
-        .join(' ');
-      
-      // Also extract BT...ET blocks  
+      const text1 = matches.map(m => m.slice(1, -1)).filter(t => /[a-zA-Z]{2,}/.test(t)).join(' ');
       const btBlocks = rawStr.match(/BT[\s\S]{1,500}?ET/g) || [];
       const text2 = btBlocks.join(' ').replace(/[^a-zA-Z0-9@.+\-\s]/g, ' ');
-      
       const combined = (text1 + ' ' + text2).replace(/\s+/g, ' ').trim();
-      console.log('PDF extracted chars:', combined.length, '| Preview:', combined.substring(0, 200));
-      return combined;
+      
+      if (combined.length > 100) {
+        console.log('Text PDF extracted:', combined.length, 'chars');
+        return combined;
+      }
+      
+      // Scanned PDF - use Tesseract OCR
+      console.log('Scanned PDF detected, using OCR...');
+      const { createWorker } = await import('tesseract.js');
+      const worker = await createWorker('eng');
+      
+      // Convert PDF to image using canvas
+      const { getDocument, GlobalWorkerOptions } = await import('pdfjs-dist');
+      GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs`;
+      const pdf = await getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+      
+      let ocrText = '';
+      for (let i = 1; i <= Math.min(pdf.numPages, 3); i++) {
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale: 2.0 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        const { data: { text } } = await worker.recognize(canvas);
+        ocrText += text + '\n';
+      }
+      await worker.terminate();
+      console.log('OCR extracted:', ocrText.length, 'chars');
+      return ocrText;
     } catch(e) {
       console.error('PDF error:', e.message);
       return '';
