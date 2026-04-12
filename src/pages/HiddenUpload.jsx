@@ -15,10 +15,18 @@ export default function HiddenUpload() {
   const handleSingleUpload = async () => {
     if (!singleFile) return;
     setSingleStatus("uploading"); setSingleMsg("");
-    const formData = new FormData();
-    formData.append("resume", singleFile);
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(",")[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(singleFile);
+    });
     try {
-      const res = await fetch("/api/parse-and-save-resume", { method: "POST", body: formData });
+      const res = await fetch("/api/parse-and-save-resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: singleFile.name, fileData: base64, fileType: singleFile.type }),
+      });
       const data = await res.json();
       if (res.ok) { setSingleStatus("success"); setSingleMsg(data.message || "Uploaded!"); setSingleFile(null); if (singleInputRef.current) singleInputRef.current.value = ""; }
       else { setSingleStatus("error"); setSingleMsg(data.error || "Upload failed."); }
@@ -38,7 +46,17 @@ export default function HiddenUpload() {
       results.push({ name: file.name, status: "uploading" });
       setBulkResults([...results]);
       try {
-        const res = await fetch("/api/parse-and-save-resume", { method: "POST", body: formData });
+        const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const res = await fetch("/api/parse-and-save-resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: file.name, fileData: base64, fileType: file.type }),
+      });
         const data = await res.json();
         results[i] = res.ok ? { name: file.name, status: "success" } : { name: file.name, status: "error" };
       } catch { results[i] = { name: file.name, status: "error" }; }
