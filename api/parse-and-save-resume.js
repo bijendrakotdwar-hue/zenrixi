@@ -16,12 +16,22 @@ export default async function handler(req, res) {
     // Extract text from PDF or DOCX
     if (fileName.toLowerCase().endsWith('.pdf')) {
       try {
-        const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
+        // Try multiple import methods
+        let pdfParse;
+        try {
+          const mod = await import('pdf-parse');
+          pdfParse = mod.default || mod;
+        } catch {
+          const mod = await import('pdf-parse/lib/pdf-parse.js');
+          pdfParse = mod.default || mod;
+        }
         const pdfData = await pdfParse(fileBuffer);
         extractedText = pdfData.text;
+        console.log('PDF extracted, length:', extractedText.length);
       } catch(e) {
         console.error('PDF parse error:', e.message);
-        extractedText = fileName; // fallback
+        // Fallback: send base64 to Groq directly
+        extractedText = '';
       }
     } else if (fileName.toLowerCase().endsWith('.docx')) {
       try {
