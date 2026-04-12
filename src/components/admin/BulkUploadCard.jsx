@@ -6,36 +6,31 @@ const statusIcon  = { pending:'⏳', uploading:'🔄', success:'✅', error:'❌
 
 async function extractTextFromFile(file) {
   if (file.name.toLowerCase().endsWith('.docx')) {
-    const mammoth = await import('mammoth');
-    const arrayBuffer = await file.arrayBuffer();
-    const result = await mammoth.extractRawText({ arrayBuffer });
-    return result.value;
+    try {
+      const mammoth = await import('mammoth');
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer });
+      console.log('DOCX extracted chars:', result.value.length);
+      return result.value;
+    } catch(e) {
+      console.error('DOCX error:', e.message);
+      return '';
+    }
   }
   
   if (file.name.toLowerCase().endsWith('.pdf')) {
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-      const loadingTask = pdfjsLib.getDocument({ 
-        data: new Uint8Array(arrayBuffer),
-        useWorkerFetch: false,
-        isEvalSupported: false,
-        useSystemFonts: true,
-        disableAutoFetch: true,
-        disableStream: true
-      });
-      const pdf = await loadingTask.promise;
-      let text = '';
-      for (let i = 1; i <= Math.min(pdf.numPages, 8); i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        text += content.items.map(item => item.str).join(' ') + '\n';
-      }
-      console.log('PDF extracted chars:', text.length, text.substring(0,100));
+      // Read raw PDF bytes as text - works for text-based PDFs
+      const rawText = await file.text();
+      // Extract readable text using regex - remove PDF syntax
+      const lines = rawText.split(/\n|\r/)
+        .map(l => l.trim())
+        .filter(l => l.length > 2 && /[a-zA-Z@+0-9]/.test(l) && !/^[\/<>\[\]{}%]/.test(l));
+      const text = lines.join(' ');
+      console.log('PDF raw text chars:', text.length, text.substring(0, 200));
       return text;
     } catch(e) {
-      console.error('PDF extract error:', e.message);
+      console.error('PDF error:', e.message);
       return '';
     }
   }
