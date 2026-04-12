@@ -4,8 +4,32 @@ const STATUS = { PENDING:'pending', UPLOADING:'uploading', SUCCESS:'success', ER
 const statusStyle = { pending:'bg-gray-100 text-gray-500', uploading:'bg-blue-50 text-blue-600', success:'bg-green-50 text-green-600', error:'bg-red-50 text-red-500' };
 const statusIcon  = { pending:'⏳', uploading:'🔄', success:'✅', error:'❌' };
 
-// Convert file to base64 and send to server for processing
+async function extractTextFromFile(file) {
+  if (file.name.toLowerCase().endsWith('.docx')) {
+    const mammoth = await import('mammoth');
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    return result.value;
+  }
+  
+  if (file.name.toLowerCase().endsWith('.pdf')) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.js', import.meta.url).toString();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let text = '';
+    for (let i = 1; i <= Math.min(pdf.numPages, 5); i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map(item => item.str).join(' ') + '\n';
+    }
+    return text;
+  }
+  return '';
+}
+
 async function uploadResume(file) {
+  // Convert to base64 for storage upload
   const base64 = await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result.split(',')[1]);
@@ -13,10 +37,23 @@ async function uploadResume(file) {
     reader.readAsDataURL(file);
   });
 
+  // Extract text client side
+  let extractedText = '';
+  try {
+    extractedText = await extractTextFromFile(file);
+  } catch(e) {
+    console.error('Text extraction error:', e);
+  }
+
   const res = await fetch('/api/parse-and-save-resume', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fileName: file.name, fileData: base64, fileType: file.type }),
+    body: JSON.stringify({ 
+      fileName: file.name, 
+      fileData: base64, 
+      fileType: file.type,
+      extractedText: extractedText.substring(0, 5000)
+    }),
   });
   const json = await res.json();
   if (!res.ok) throw new Error(json.error || 'Upload failed');
@@ -46,10 +83,10 @@ export default function BulkUploadCard({ onCandidatesAdded }) {
     setIsProcessing(true);
     let successCount = 0;
     for (const item of pending) {
-      updateFile(item.id, { status: STATUS.UPLOADING, message: 'Uploading & parsing...' });
+      updateFile(item.id, { status: STATUS.UPLOADING, message: 'Extracting & parsing...' });
       try {
         const candidate = await uploadResume(item.file);
-        updateFile(item.id, { status: STATUS.SUCCESS, message: `Saved: ${candidate?.name || 'Candidate'}` });
+        updateFile(item.id, { status: STATUS.SUCCESS, message: `✅ Saved: ${candidate?.name || 'Candidate'}` });
         successCount++;
       } catch (err) {
         updateFile(item.id, { status: STATUS.ERROR, message: err.message });

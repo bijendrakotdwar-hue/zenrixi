@@ -3,7 +3,7 @@ export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { fileName, fileData, fileType } = req.body;
+  const { fileName, fileData, fileType, extractedText } = req.body;
   if (!fileName || !fileData) return res.status(400).json({ error: 'fileName and fileData required' });
 
   const supaUrl = process.env.VITE_SUPABASE_URL;
@@ -11,7 +11,8 @@ export default async function handler(req, res) {
 
   try {
     const fileBuffer = Buffer.from(fileData, 'base64');
-    let extractedText = '';
+    let serverExtractedText = '';
+    let extractedText = req.body.extractedText || '';
 
     // Extract text from PDF or DOCX
     if (fileName.toLowerCase().endsWith('.pdf')) {
@@ -26,7 +27,7 @@ export default async function handler(req, res) {
           pdfParse = mod.default || mod;
         }
         const pdfData = await pdfParse(fileBuffer);
-        extractedText = pdfData.text;
+        serverExtractedText = pdfData.text;
         console.log('PDF extracted, length:', extractedText.length);
       } catch(e) {
         console.error('PDF parse error:', e.message);
@@ -37,14 +38,18 @@ export default async function handler(req, res) {
       try {
         const mammoth = await import('mammoth');
         const result = await mammoth.extractRawText({ buffer: fileBuffer });
-        extractedText = result.value;
+        serverExtractedText = result.value;
       } catch(e) {
         console.error('DOCX parse error:', e.message);
         extractedText = fileName;
       }
     }
 
-    console.log('Extracted text length:', extractedText.length);
+    if (extractedText && extractedText.length > 50) {
+      console.log('Using client-extracted text, length:', extractedText.length);
+    } else {
+      console.log('Server-side extraction, length:', extractedText ? extractedText.length : 0);
+    }
 
     // Upload to Supabase Storage
     const uniqueName = `${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
@@ -77,7 +82,7 @@ export default async function handler(req, res) {
           },
           { 
             role: 'user', 
-            content: extractedText.substring(0, 5000) || fileName
+            content: (extractedText && extractedText.length > 50 ? extractedText : serverExtractedText || fileName).substring(0, 5000)
           }
         ]
       })
