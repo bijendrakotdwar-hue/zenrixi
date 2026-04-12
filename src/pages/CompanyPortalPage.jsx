@@ -562,9 +562,56 @@ const CompanyPortalPage = () => {
                       className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <div>
-                    <label className="text-sm font-semibold block mb-1">Department* <span className="font-normal text-gray-400">(e.g. QA, Production, Maintenance)</span></label>
-                    <input value={job.department} onChange={e => setJob({...job, department:e.target.value})} placeholder="e.g. Quality Assurance, Production, R&D"
-                      className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <label className="text-sm font-semibold block mb-1">Department*</label>
+                    <select value={job.department} onChange={e => setJob({...job, department:e.target.value})}
+                      className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <option value="">-- Select Department --</option>
+                      <optgroup label="Operations & Manufacturing">
+                        <option>Production / Manufacturing</option>
+                        <option>Quality Assurance (QA)</option>
+                        <option>Quality Control (QC)</option>
+                        <option>Research & Development (R&D)</option>
+                        <option>Maintenance & Engineering</option>
+                        <option>Warehouse / Stores</option>
+                        <option>Supply Chain / Logistics</option>
+                        <option>Packaging</option>
+                      </optgroup>
+                      <optgroup label="Business & Management">
+                        <option>Sales & Marketing</option>
+                        <option>Business Development</option>
+                        <option>Finance & Accounts</option>
+                        <option>Human Resources (HR)</option>
+                        <option>Administration</option>
+                        <option>Legal & Compliance</option>
+                        <option>Procurement / Purchase</option>
+                        <option>Customer Service</option>
+                      </optgroup>
+                      <optgroup label="Technology">
+                        <option>Information Technology (IT)</option>
+                        <option>Software Development</option>
+                        <option>Data Science & Analytics</option>
+                        <option>Cybersecurity</option>
+                        <option>DevOps / Infrastructure</option>
+                        <option>Product Management</option>
+                        <option>UI/UX Design</option>
+                      </optgroup>
+                      <optgroup label="Healthcare & Pharma">
+                        <option>Regulatory Affairs</option>
+                        <option>Pharmacovigilance</option>
+                        <option>Medical Affairs</option>
+                        <option>Clinical Research</option>
+                        <option>Drug Safety</option>
+                        <option>Validation</option>
+                        <option>Environmental Health & Safety (EHS)</option>
+                      </optgroup>
+                      <optgroup label="Other">
+                        <option>Project Management</option>
+                        <option>Training & Development</option>
+                        <option>Strategy & Planning</option>
+                        <option>Corporate Communications / PR</option>
+                        <option>Other</option>
+                      </optgroup>
+                    </select>
                   </div>
                   <div>
                     <label className="text-sm font-semibold block mb-1">Industry*</label>
