@@ -90,6 +90,18 @@ Schema: {"full_name":"","email":null,"phone":null,"location":null,"current_title
     try { parsed = JSON.parse(raw); }
     catch { parsed = { full_name: fileName.replace(/\.pdf|\.docx/gi, ''), skills: [] }; }
 
+    // Check if candidate with same email already exists
+    if (parsed.email) {
+      const checkRes = await fetch(`${supaUrl}/rest/v1/candidates?email=eq.${encodeURIComponent(parsed.email)}&select=id,name`, {
+        headers: { 'apikey': supaKey, 'Authorization': `Bearer ${supaKey}` }
+      });
+      const existing = await checkRes.json();
+      if (existing.length > 0) {
+        console.log('Candidate already exists:', parsed.email);
+        return res.status(200).json({ success: true, candidate: existing[0], skipped: true, reason: 'Email already exists' });
+      }
+    }
+
     // Save candidate
     const dbRes = await fetch(`${supaUrl}/rest/v1/candidates`, {
       method: 'POST',
