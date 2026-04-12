@@ -39,6 +39,63 @@ const CompanyPortalPage = () => {
   const [offerData, setOfferData] = useState({ salary: '', joining_date: '', designation: '', department: '' })
   const [job, setJob] = useState({ title: '', description: '', skills: '', experience: '0', location: '', salary: '', department: '', qualification: '', industry: 'Pharmaceutical', job_type: 'Full Time' })
   const [filterJob, setFilterJob] = useState('all')
+  const [qualInput, setQualInput] = useState('')
+  const [qualSuggestions, setQualSuggestions] = useState([])
+  const [selectedQuals, setSelectedQuals] = useState([])
+
+  const ALL_QUALIFICATIONS = [
+    // Science & Pharma
+    'B.Pharm','M.Pharm','Pharm.D','D.Pharm','B.Sc Chemistry','M.Sc Chemistry',
+    'B.Sc Microbiology','M.Sc Microbiology','B.Sc Biotechnology','M.Sc Biotechnology',
+    'B.Sc Physics','M.Sc Physics','B.Sc Life Sciences','M.Sc Life Sciences',
+    'Ph.D Chemistry','Ph.D Pharmacy','Ph.D Microbiology',
+    // Engineering
+    'B.Tech Mechanical','B.Tech Electrical','B.Tech Electronics','B.Tech Chemical',
+    'B.Tech Civil','B.Tech Computer Science','B.Tech IT','B.Tech Instrumentation',
+    'M.Tech Mechanical','M.Tech Electrical','M.Tech Chemical','M.Tech Computer Science',
+    'BE Mechanical','BE Electrical','BE Electronics','BE Chemical',
+    'Diploma Mechanical','Diploma Electrical','Diploma Electronics','Diploma Chemical',
+    'ITI Electrician','ITI Fitter','ITI Turner','ITI Welder',
+    // Medical & Healthcare
+    'MBBS','MD','MS','BDS','MDS','B.Sc Nursing','M.Sc Nursing','GNM',
+    'BAMS','BHMS','BUMS','B.Sc MLT','DMLT','B.Sc Radiology',
+    // Management & Commerce
+    'MBA','MBA HR','MBA Finance','MBA Marketing','MBA Operations','MBA Supply Chain',
+    'BBA','B.Com','M.Com','CA','CMA','CS','PGDM','MCA','BCA',
+    // Arts & Others
+    'BA','MA','B.Ed','M.Ed','LLB','LLM','MSW','BSW',
+    'PG Diploma QA','PG Diploma Regulatory Affairs','PG Diploma Clinical Research',
+    '10th Pass','12th Pass','12th Science','12th Commerce','Graduate','Post Graduate'
+  ]
+
+  const handleQualInput = (val) => {
+    setQualInput(val)
+    if (val.length > 1) {
+      const filtered = ALL_QUALIFICATIONS.filter(q =>
+        q.toLowerCase().includes(val.toLowerCase()) &&
+        !selectedQuals.includes(q)
+      ).slice(0, 8)
+      setQualSuggestions(filtered)
+    } else {
+      setQualSuggestions([])
+    }
+  }
+
+  const addQual = (qual) => {
+    if (!selectedQuals.includes(qual)) {
+      const newQuals = [...selectedQuals, qual]
+      setSelectedQuals(newQuals)
+      setJob({...job, qualification: newQuals.join(', ')})
+    }
+    setQualInput('')
+    setQualSuggestions([])
+  }
+
+  const removeQual = (qual) => {
+    const newQuals = selectedQuals.filter(q => q !== qual)
+    setSelectedQuals(newQuals)
+    setJob({...job, qualification: newQuals.join(', ')})
+  }
   const [skillInput, setSkillInput] = useState('')
   const [skillSuggestions, setSkillSuggestions] = useState([])
   const [selectedSkills, setSelectedSkills] = useState([])
@@ -735,8 +792,33 @@ const CompanyPortalPage = () => {
                   </div>
                   <div>
                     <label className="text-sm font-semibold block mb-1">Required Qualification*</label>
-                    <input value={job.qualification} onChange={e => setJob({...job, qualification:e.target.value})} placeholder="e.g. B.Pharm, M.Pharm, B.Tech, MBA"
-                      className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    {selectedQuals.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {selectedQuals.map(q => (
+                          <span key={q} className="flex items-center gap-1 bg-green-100 text-green-700 px-2.5 py-1 rounded-full text-xs font-medium">
+                            {q}
+                            <button onClick={() => removeQual(q)} className="text-green-400 hover:text-red-500 font-bold text-sm leading-none">×</button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="relative">
+                      <input value={qualInput} onChange={e => handleQualInput(e.target.value)}
+                        onKeyDown={e => { if(e.key === 'Enter' && qualInput.trim()) { e.preventDefault(); addQual(qualInput.trim()); } }}
+                        placeholder="Type qualification... (e.g. B.Pharm, B.Tech, MBA)"
+                        className="w-full h-11 border rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      {qualSuggestions.length > 0 && (
+                        <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto">
+                          {qualSuggestions.map(q => (
+                            <button key={q} onClick={() => addQual(q)}
+                              className="w-full text-left px-4 py-2.5 text-sm hover:bg-green-50 hover:text-green-700 transition-colors border-b last:border-0">
+                              {q}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">Multiple qualifications select kar sakte ho</p>
                   </div>
                   <div>
                     <label className="text-sm font-semibold block mb-1">Min Experience (years)</label>
