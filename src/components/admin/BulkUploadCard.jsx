@@ -15,7 +15,7 @@ async function extractTextFromFile(file) {
   if (file.name.toLowerCase().endsWith('.pdf')) {
     const arrayBuffer = await file.arrayBuffer();
     const pdfjsLib = await import('pdfjs-dist');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.js', import.meta.url).toString();
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs`;
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     let text = '';
     for (let i = 1; i <= Math.min(pdf.numPages, 5); i++) {
