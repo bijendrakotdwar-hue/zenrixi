@@ -13,32 +13,24 @@ async function extractTextFromFile(file) {
   }
   
   if (file.name.toLowerCase().endsWith('.pdf')) {
-    const arrayBuffer = await file.arrayBuffer();
-    // Use fetch to load pdfjs from CDN
-    if (!window.pdfjsLib) {
-      await new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs';
-        script.type = 'module';
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.appendChild(script);
-      });
-    }
     try {
-      const pdfjsLib = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
-      const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+      const arrayBuffer = await file.arrayBuffer();
+      const { getDocument, GlobalWorkerOptions } = await import('pdfjs-dist');
+      GlobalWorkerOptions.workerSrc = new URL(
+        'pdfjs-dist/build/pdf.worker.min.mjs',
+        import.meta.url
+      ).href;
+      const pdf = await getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
       let text = '';
       for (let i = 1; i <= Math.min(pdf.numPages, 5); i++) {
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
         text += content.items.map(item => item.str).join(' ') + '\n';
       }
-      console.log('PDF text extracted, length:', text.length);
+      console.log('PDF extracted, chars:', text.length);
       return text;
     } catch(e) {
-      console.error('pdfjs error:', e);
+      console.error('PDF extract error:', e.message);
       return '';
     }
   }
