@@ -3,7 +3,7 @@ export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { fileName, fileData, fileType, extractedText } = req.body;
+  const { fileName, fileData, fileType } = req.body;
   if (!fileName) return res.status(400).json({ error: 'fileName required' });
 
   const supaUrl = process.env.VITE_SUPABASE_URL;
@@ -13,6 +13,7 @@ export default async function handler(req, res) {
     const fileBuffer = Buffer.from(fileData, 'base64');
     let serverExtractedText = '';
     let extractedText = req.body.extractedText || '';
+    console.log('Client extractedText length:', extractedText.length);
 
     // Extract text from PDF or DOCX
     if (fileName.toLowerCase().endsWith('.pdf')) {
