@@ -20,15 +20,29 @@ async function extractTextFromFile(file) {
   
   if (file.name.toLowerCase().endsWith('.pdf')) {
     try {
-      // Read raw PDF bytes as text - works for text-based PDFs
-      const rawText = await file.text();
-      // Extract readable text using regex - remove PDF syntax
-      const lines = rawText.split(/\n|\r/)
-        .map(l => l.trim())
-        .filter(l => l.length > 2 && /[a-zA-Z@+0-9]/.test(l) && !/^[\/<>\[\]{}%]/.test(l));
-      const text = lines.join(' ');
-      console.log('PDF raw text chars:', text.length, text.substring(0, 200));
-      return text;
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      
+      // Convert to string for regex extraction
+      let rawStr = '';
+      for (let i = 0; i < bytes.length; i++) {
+        rawStr += String.fromCharCode(bytes[i]);
+      }
+      
+      // Extract text from PDF parentheses notation
+      const matches = rawStr.match(/\(([^\\()]{2,500})\)/g) || [];
+      const text1 = matches
+        .map(m => m.slice(1, -1))
+        .filter(t => /[a-zA-Z]{2,}/.test(t))
+        .join(' ');
+      
+      // Also extract BT...ET blocks  
+      const btBlocks = rawStr.match(/BT[\s\S]{1,500}?ET/g) || [];
+      const text2 = btBlocks.join(' ').replace(/[^a-zA-Z0-9@.+\-\s]/g, ' ');
+      
+      const combined = (text1 + ' ' + text2).replace(/\s+/g, ' ').trim();
+      console.log('PDF extracted chars:', combined.length, '| Preview:', combined.substring(0, 200));
+      return combined;
     } catch(e) {
       console.error('PDF error:', e.message);
       return '';
