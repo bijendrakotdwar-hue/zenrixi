@@ -78,21 +78,29 @@ export default async function handler(req, res) {
         messages: [
           {
             role: 'system',
-            content: `You are an expert resume parser. Extract ALL information from the resume text carefully.
-Return ONLY a valid JSON object with NO markdown, NO backticks, NO explanation.
-Look carefully for: name, email addresses (contain @), phone numbers (10 digits or with +91), job titles, years of experience, skills/technologies, education degrees.
+            content: `You are a strict resume parser. Extract ONLY information that ACTUALLY EXISTS in the resume text. 
+NEVER fabricate, guess, or invent any information. If a field is not found, use null.
+Return ONLY valid JSON, no markdown, no backticks, no explanation.
+
+IMPORTANT RULES:
+- full_name: Only the person's actual name from the resume
+- email: Only if an actual email address (with @) exists in the text, else null
+- phone: Only if an actual phone number exists, else null
+- experience_years: Count from work history dates, or extract if mentioned, else 0
+- skills: Only skills explicitly mentioned, not guessed
+- Do NOT invent example.com emails or fake phone numbers
 
 JSON Schema:
 {
-  "full_name": "exact name from resume",
-  "email": "email@example.com or null",
-  "phone": "phone number or null", 
-  "location": "city/state or null",
-  "current_title": "current job title or null",
+  "full_name": "actual name or null",
+  "email": "actual@email.com or null",
+  "phone": "actual phone or null",
+  "location": "actual city or null",
+  "current_title": "actual job title or null",
   "experience_years": 0,
-  "skills": ["skill1", "skill2"],
-  "education": "degree and institution or null",
-  "summary": "2-3 line professional summary or null"
+  "skills": ["only", "real", "skills"],
+  "education": "actual degree or null",
+  "summary": "brief summary based on actual content or null"
 }`
           },
           { 
