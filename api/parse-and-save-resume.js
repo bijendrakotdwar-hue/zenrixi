@@ -20,10 +20,24 @@ export default async function handler(req, res) {
       const buffer = Buffer.from(fileData, 'base64');
       try {
         if (fileName.toLowerCase().endsWith('.pdf')) {
-          const pdfParse = require('pdf-parse');
-          const data = await pdfParse(buffer);
-          extractedText = data.text;
-          console.log('Server PDF extracted:', extractedText.length, 'chars');
+          // Extract text from raw PDF bytes using regex
+          const rawStr = buffer.toString('latin1');
+          const textMatches = rawStr.match(/\(([^)]{2,200})\)/g) || [];
+          const extracted = textMatches
+            .map(m => m.slice(1, -1))
+            .filter(t => /[a-zA-Z]{2,}/.test(t) && !/^\d+$/.test(t))
+            .join(' ')
+            .replace(/\\n/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          
+          // Also try BT...ET blocks
+          const btMatches = rawStr.match(/BT[\s\S]*?ET/g) || [];
+          const btText = btMatches.join(' ').replace(/[^a-zA-Z0-9@.+\-\s]/g, ' ').replace(/\s+/g, ' ');
+          
+          extractedText = (extracted + ' ' + btText).trim();
+          console.log('Raw PDF extracted:', extractedText.length, 'chars');
+          console.log('Preview:', extractedText.substring(0, 300));
         } else if (fileName.toLowerCase().endsWith('.docx')) {
           const mammoth = require('mammoth');
           const result = await mammoth.extractRawText({ buffer });
