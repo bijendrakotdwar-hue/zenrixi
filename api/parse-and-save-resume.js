@@ -52,27 +52,21 @@ export default async function handler(req, res) {
     }
 
     // Parse with Groq
-    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.GROQ_API_KEY}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
-        temperature: 0.1,
-        messages: [
-          {
-            role: 'system',
-            content: `You are a strict resume parser. Extract ONLY information that ACTUALLY EXISTS in the resume text.
-NEVER fabricate or invent any data. If not found, use null.
-Return ONLY valid JSON, no markdown, no backticks.
-Schema: {"full_name":"","email":null,"phone":null,"location":null,"current_title":null,"experience_years":0,"skills":[],"education":null,"summary":null}`
-          },
-          { role: 'user', content: extractedText.substring(0, 6000) || `Resume filename: ${fileName}` }
-        ]
+        contents: [{ parts: [{ text: `You are a strict resume parser. Extract ONLY information that ACTUALLY EXISTS in the resume text. NEVER fabricate or invent any data. If not found, use null. Return ONLY valid JSON, no markdown, no backticks.
+Schema: {"full_name":"","email":null,"phone":null,"location":null,"current_title":null,"experience_years":0,"skills":[],"education":null,"summary":null}
+
+Resume text:
+${extractedText.substring(0, 8000) || 'Resume filename: ' + fileName}` }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 1000 }
       })
     });
 
-    const groqData = await groqRes.json();
-    const raw = (groqData.choices?.[0]?.message?.content || '{}').replace(/```json|```/g, '').trim();
+    const geminiData = await geminiRes.json();
+    const raw = (geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '{}').replace(/```json|```/g, '').trim();
     let parsed;
     try { parsed = JSON.parse(raw); }
     catch { parsed = { full_name: fileName.replace(/\.pdf|\.docx/gi, ''), skills: [] }; }
