@@ -1,6 +1,6 @@
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-import pdfParse from 'pdf-parse/lib/pdf-parse.js';
+
 
 export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
 
@@ -16,20 +16,16 @@ export default async function handler(req, res) {
   try {
     let extractedText = req.body.extractedText || '';
     
-    // Server-side extraction if client text not available
-    if ((!extractedText || extractedText.length < 50) && fileData) {
+    // Server-side extraction
+    if (fileData) {
       const buffer = Buffer.from(fileData, 'base64');
       try {
-        if (fileName.toLowerCase().endsWith('.pdf')) {
-          const pdfData = await pdfParse(buffer);
-          extractedText = pdfData.text || '';
-          console.log('pdf-parse extracted:', extractedText.length, 'chars');
-          console.log('Preview:', extractedText.substring(0, 300));
-        } else if (fileName.toLowerCase().endsWith('.docx')) {
+        if (fileName.toLowerCase().endsWith('.docx')) {
           const mammoth = require('mammoth');
           const result = await mammoth.extractRawText({ buffer });
           extractedText = result.value;
         }
+        // PDF: Gemini will handle directly via base64
       } catch(e) {
         console.error('Server extraction error:', e.message);
       }
@@ -52,15 +48,24 @@ export default async function handler(req, res) {
     }
 
     // Parse with Groq
+    const isPdf = fileName.toLowerCase().endsWith('.pdf');
+    const geminiParts = isPdf && fileData
+      ? [
+          { inline_data: { mime_type: 'application/pdf', data: fileData } },
+          { text: `Extract resume info. Return ONLY valid JSON, no markdown, no backticks. NEVER fabricate data, use null if not found.
+Schema: {"full_name":"","email":null,"phone":null,"location":null,"current_title":null,"experience_years":0,"skills":[],"education":null,"summary":null}` }
+        ]
+      : [{ text: `You are a strict resume parser. Extract ONLY information that ACTUALLY EXISTS in the resume text. NEVER fabricate data, use null if not found. Return ONLY valid JSON, no markdown, no backticks.
+Schema: {"full_name":"","email":null,"phone":null,"location":null,"current_title":null,"experience_years":0,"skills":[],"education":null,"summary":null}
+
+Resume text:
+${extractedText.substring(0, 8000) || 'Resume filename: ' + fileName}` }];
+
     const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: `You are a strict resume parser. Extract ONLY information that ACTUALLY EXISTS in the resume text. NEVER fabricate or invent any data. If not found, use null. Return ONLY valid JSON, no markdown, no backticks.
-Schema: {"full_name":"","email":null,"phone":null,"location":null,"current_title":null,"experience_years":0,"skills":[],"education":null,"summary":null}
-
-Resume text:
-${extractedText.substring(0, 8000) || 'Resume filename: ' + fileName}` }] }],
+        contents: [{ parts: geminiParts }],
         generationConfig: { temperature: 0.1, maxOutputTokens: 1000 }
       })
     });
