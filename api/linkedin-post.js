@@ -13,7 +13,6 @@ export default async function handler(req, res) {
     try {
       const params = new URLSearchParams({ title, company: company_name, location: location || 'India', experience: experience || '0', skills: skills || '' });
       const imageUrl = `https://zenrixi.com/api/job-poster?${params.toString()}`;
-
       const imgRes = await fetch(imageUrl);
       const pngBuffer = Buffer.from(await imgRes.arrayBuffer());
 
