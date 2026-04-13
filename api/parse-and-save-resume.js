@@ -71,7 +71,9 @@ ${extractedText.substring(0, 8000) || 'Resume filename: ' + fileName}` }];
     });
 
     const geminiData = await geminiRes.json();
+    console.log('Gemini response:', JSON.stringify(geminiData).substring(0, 500));
     const raw = (geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '{}').replace(/```json|```/g, '').trim();
+    console.log('Raw parsed:', raw.substring(0, 200));
     let parsed;
     try { parsed = JSON.parse(raw); }
     catch { parsed = { full_name: fileName.replace(/\.pdf|\.docx/gi, ''), skills: [] }; }
