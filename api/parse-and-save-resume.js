@@ -61,7 +61,7 @@ Schema: {"full_name":"","email":null,"phone":null,"location":null,"current_title
 Resume text:
 ${extractedText.substring(0, 8000) || 'Resume filename: ' + fileName}` }];
 
-    const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+    const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent?key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
