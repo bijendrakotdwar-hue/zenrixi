@@ -56,14 +56,14 @@ Return ONLY valid JSON:
   "reason": "Overall brief summary"
 }`;
 
-      const aiRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.GROQ_API_KEY}` },
-        body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: prompt }], max_tokens: 500, temperature: 0.1 })
+        headers: { 'Content-Type': 'application/json', 'X-Custom': 'gemini' },
+        body: JSON.stringify({ model: 'llama-3.1-8b-instant', contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 800 }, max_tokens: 500, temperature: 0.1 })
       });
 
       const aiData = await aiRes.json();
-      const text = aiData.choices?.[0]?.message?.content || '{}';
+      const text = aiData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
       const result = JSON.parse(text.replace(/```json|```/g, '').trim());
 
       // Skip if below minimum threshold
