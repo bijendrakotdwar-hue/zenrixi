@@ -33,6 +33,7 @@ const CompanyPortalPage = () => {
   const [forgotEmail, setForgotEmail] = useState('')
   const [selectedCandidate, setSelectedCandidate] = useState(null)
   const [editingJob, setEditingJob] = useState(null)
+  const [shortlistModal, setShortlistModal] = useState({ open: false, jobId: null, jobTitle: '' })
   const [showInterviewModal, setShowInterviewModal] = useState(false)
   const [showOfferModal, setShowOfferModal] = useState(false)
   const [interviewData, setInterviewData] = useState({ scheduled_at: '', duration_minutes: 60, interview_type: 'video', meeting_link: '', interviewer_name: '', notes: '' })
@@ -855,6 +856,54 @@ const CompanyPortalPage = () => {
             </div>
           )}
 
+          {/* Shortlisted Candidates Modal */}
+          {shortlistModal.open && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShortlistModal({ open: false, jobId: null, jobTitle: '' })}>
+              <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-5">
+                  <div>
+                    <h3 className="text-lg font-bold">Shortlisted Candidates</h3>
+                    <p className="text-sm text-gray-500">{shortlistModal.jobTitle}</p>
+                  </div>
+                  <button onClick={() => setShortlistModal({ open: false, jobId: null, jobTitle: '' })} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                </div>
+                {matches.filter(m => m.job_id === shortlistModal.jobId && m.status === 'Shortlisted').length === 0 ? (
+                  <p className="text-center text-gray-400 py-8">No shortlisted candidates yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {matches.filter(m => m.job_id === shortlistModal.jobId && m.status === 'Shortlisted').map(m => (
+                      <div key={m.id} className="border rounded-xl p-4 hover:shadow-sm transition-shadow">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center font-bold text-green-700 text-sm">
+                              {m.candidates?.name?.charAt(0)?.toUpperCase() || '?'}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-sm">{m.candidates?.name || 'Unknown'}</p>
+                              <p className="text-xs text-gray-500">{m.candidates?.job_title || m.candidates?.current_title || 'No title'} • {m.candidates?.experience_years || 0} yrs exp</p>
+                              {m.candidates?.email && <p className="text-xs text-blue-500">{m.candidates.email}</p>}
+                            </div>
+                          </div>
+                          <span className="text-green-600 font-bold text-sm">{m.ai_score}%</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {(m.candidates?.parsed_skills || []).slice(0,4).map((s,i) => (
+                            <span key={i} className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">{s}</span>
+                          ))}
+                        </div>
+                        <div className="flex gap-2 mt-3">
+                          {m.candidates?.email && <a href={`mailto:${m.candidates.email}`} className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-blue-700 flex items-center gap-1"><Mail className="w-3 h-3" /> Email</a>}
+                          {m.candidates?.phone && <a href={`tel:${m.candidates.phone}`} className="text-xs bg-gray-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-gray-700 flex items-center gap-1"><Phone className="w-3 h-3" /> Call</a>}
+                          {m.candidates?.resume_url && <a href={m.candidates.resume_url} target="_blank" rel="noreferrer" className="text-xs border border-blue-500 text-blue-600 px-3 py-1.5 rounded-lg font-medium hover:bg-blue-50 flex items-center gap-1"><Download className="w-3 h-3" /> Resume</a>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* My Jobs */}
           {tab==='jobs' && (
             <div>
@@ -893,6 +942,11 @@ const CompanyPortalPage = () => {
                       <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
                         <span>Min {j.min_experience} yrs exp</span>
                         <span>{matches.filter(m => m.job_id === j.id).length} matches</span>
+                        <button
+                          onClick={() => setShortlistModal({ open: true, jobId: j.id, jobTitle: j.title })}
+                          className="flex items-center gap-1 bg-green-100 text-green-700 px-2.5 py-1 rounded-full font-semibold hover:bg-green-200 transition-colors">
+                          ✅ {matches.filter(m => m.job_id === j.id && m.status === 'Shortlisted').length} Shortlisted
+                        </button>
                       </div>
                     </div>
                   ))}
