@@ -126,18 +126,18 @@ ${extractedText.substring(0, 8000) || 'Resume filename: ' + fileName}` }];
         });
         const existing = await existCheck.json();
         if (existing.length > 0) continue;
-        const aiRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.GROQ_API_KEY}` },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: 'llama-3.1-8b-instant', temperature: 0.1, max_tokens: 300,
-            messages: [{ role: 'user', content: `Score candidate for job. Return ONLY JSON: {"overall_score":75,"recommendation":"maybe","education":{"score":7,"max":10,"summary":"brief"},"experience":{"score":6,"max":10,"summary":"brief"},"skills":{"score":8,"max":10,"summary":"brief"},"location":{"score":5,"max":10,"summary":"brief"},"reason":"brief"}
+            contents: [{ parts: [{ text: `Score candidate for job. Return ONLY JSON, no markdown, no backticks: {"overall_score":75,"recommendation":"maybe","education":{"score":7,"max":10,"summary":"brief"},"experience":{"score":6,"max":10,"summary":"brief"},"skills":{"score":8,"max":10,"summary":"brief"},"location":{"score":5,"max":10,"summary":"brief"},"reason":"brief"}
 CANDIDATE: ${candidate.name}, ${candidate.current_title||''}, ${candidate.experience_years||0}yrs, skills: ${(candidate.parsed_skills||[]).join(',')}, education: ${candidate.education||'unknown'}
-JOB: ${job.title}, required: ${Array.isArray(job.required_skills)?job.required_skills.join(','):''}, min exp: ${job.min_experience||0}yrs` }]
+JOB: ${job.title}, required: ${Array.isArray(job.required_skills)?job.required_skills.join(','):''}, min exp: ${job.min_experience||0}yrs` }] }],
+            generationConfig: { temperature: 0.1, maxOutputTokens: 300 }
           })
         });
         const aiData = await aiRes.json();
-        const aiRaw = (aiData.choices?.[0]?.message?.content || '{}').replace(/```json|```/g,'').trim();
+        const aiRaw = (aiData.candidates?.[0]?.content?.parts?.[0]?.text || '{}').replace(/```json|```/g,'').trim();
         let result;
         try { result = JSON.parse(aiRaw); } catch { result = {overall_score:60, recommendation:'maybe'}; }
         await fetch(`${supaUrl}/rest/v1/matches`, {
